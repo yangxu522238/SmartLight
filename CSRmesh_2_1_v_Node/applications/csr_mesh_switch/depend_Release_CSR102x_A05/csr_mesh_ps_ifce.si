@@ -1,0 +1,2198 @@
+   1                 		.file	"csr_mesh_ps_ifce.c"
+   2                 		.variant xap2+
+   3                 	
+   4                 		.large
+   5                 	
+   6                 		.section	.debug_abbrev,"",@progbits
+   7                 	.Ldebug_abbrev0:
+   8                 		.section	.debug_info,"",@progbits
+   9                 	.Ldebug_info0:
+  10                 		.section	.debug_line,"",@progbits
+  11                 	.Ldebug_line0:
+  12 0000 00 00 00 00 		.text
+  12      00 02 00 00 
+  12      00 00 01 01 
+  12      FB 0E 0D 00 
+  12      01 01 01 01 
+  13                 	.Ltext0:
+  14                 		.section	.text.getPsKeyOffset,"ax",@progbits
+  15                 		.type	getPsKeyOffset, @function
+  16                 	getPsKeyOffset:
+  17                 	.LFB2:
+  18                 		.file 1 "../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c"
+   0:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /******************************************************************************
+   1:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  Copyright 2015 - 2016 Qualcomm Technologies International, Ltd.
+   2:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  Bluetooth Low Energy CSRmesh 2.1
+   3:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  CSRmesh is a product of Qualcomm Technologies International Ltd.
+   4:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *****************************************************************************/
+   5:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*! \file csr_mesh_ps_ifce.c
+   6:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  \brief defines and functions for csr_mesh_ps_ifce.c
+   7:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+   8:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *   This file contains the function and definations for csr_mesh_ps_ifce.c
+   9:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  */
+  10:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  /*****************************************************************************/
+  11:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #include "csr_mesh_nvm.h"
+  12:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  13:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*============================================================================*
+  14:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  Private Types
+  15:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *============================================================================*/
+  16:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  17:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** typedef struct
+  18:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+  19:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     CsrUint8 key;
+  20:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     CsrUint16 offset;
+  21:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }CSR_MESH_PSKEY_OFFSET_T;
+  22:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  23:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  24:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*============================================================================*
+  25:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  Private Definitions
+  26:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *============================================================================*/
+  27:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  28:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  29:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /* Size of the NVM Offsets table */
+  30:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #define SIZE_OF_TABLE (sizeof(csr_mesh_pskey_offset_table)/sizeof(CSR_MESH_PSKEY_OFFSET_T))
+  31:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  32:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /* CSRmesh NVM sanity magic  */
+  33:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #define CSR_MESH_NVM_SANITY_WORD              0x0050
+  34:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  35:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*============================================================================*
+  36:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  Private Data
+  37:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *============================================================================*/
+  38:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  39:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** static CSR_MESH_PSKEY_OFFSET_T csr_mesh_pskey_offset_table[] = 
+  40:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+  41:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_NVM_SANITY_KEY,       CSR_MESH_NVM_SANITY_WORD_OFFSET},
+  42:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_DEVICE_UUID_KEY,      CSR_MESH_NVM_DEVICE_UUID_OFFSET},
+  43:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_DEVICE_AUTHCODE_KEY,  CSR_MESH_NVM_DEVICE_AUTH_CODE_OFFSET},
+  44:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MTL_NW_KEY_AVL_KEY,   CSR_MESH_MTL_NW_KEY_AVL_NVM_OFFSET},
+  45:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MTL_MCP_NWKEY_KEY,    CSR_MESH_MTL_MCP_NW_KEY_NVM_OFFSET},
+  46:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MASP_RELAY_STATE_KEY, CSR_MESH_MASP_RELAY_STATE_NVM_OFFSET},
+  47:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MCP_SEQ_NUM_KEY,      CSR_MESH_MCP_SEQ_NUM_NVM_OFFSET},
+  48:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MCP_GEN_SEQ_NUM_KEY,  CSR_MESH_MCP_GEN_SEQ_NUM_NVM_OFFSET},
+  49:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_CONFIG_LAST_ETAG_KEY, CSR_MESH_CONFIG_LAST_ETAG_NVM_OFFSET},
+  50:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #if (CSR_MESH_NO_OF_NWKS == 1)
+  51:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_DEVICE_ID_KEY,        CSR_MESH_DEVICE_ID_OFFSET},
+  52:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MTL_RELAY_STATUS_KEY, CSR_MESH_MTL_RELAY_STATUS_NVM_OFFSET},
+  53:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_DEVICE_DHM_KEY,       CSR_MESH_DHM_KEY_NVM_OFFSET},
+  54:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_NW_IV_KEY,            CSR_MESH_IV_NVM_OFFSET},
+  55:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #endif
+  56:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #ifndef CSR101x_A05
+  57:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MCP_SEQ_DEV_COUNT_KEY, CSR_MESH_MCP_SEQ_DEV_COUNT_OFFSET},
+  58:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {CSR_MESH_MCP_SEQ_CACHE_TABLE_KEY, CSR_MESH_MCP_SEQ_CACHE_TABLE_OFFSET},
+  59:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** #endif
+  60:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** };
+  61:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  62:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  63:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*============================================================================*
+  64:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  Private Function Implementations
+  65:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *============================================================================*/
+  66:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  67:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+  68:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+  69:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      getPsKeyOffset
+  70:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+  71:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+  72:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Initialise Persistent Store
+  73:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+  74:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+  75:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS has been initialised
+  76:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      successfully
+  77:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+  78:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+  79:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** static CsrUint16 getPsKeyOffset(CsrUint8 key)
+  80:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+  19                 	:
+  20                 		enterl	#0x0002
+  21 0000 FE 0B       	.LCFI0:
+  22                 		st	AL,@0xfff9
+  23 0001 F9 25       		.loc 1 81 0
+  24                 		ld	AL,#0x0000
+  25 0002 00 14       	.LVL1:
+  26                 		st	AL,@0xfff8
+  27 0003 F8 25       	.LVL2:
+  28                 	.L3:
+  29                 		.loc 1 85 0
+  81:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     if(csr_mesh_pskey_offset_table[count].key == key)
+  82:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         {
+  83:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****             break;
+  84:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         }
+  30                 	ff8
+  31 0004 F8 15       		asl	#0x0001
+  32 0005 01 A0       		ld	X,@$XAP_AL
+  33 0006 00 00 00 19 		ld	AL,@(csr_mesh_pskey_offset_table+0,X)
+  34 0008 00 00 00 16 		cmp	AL,@0xfff9
+  35 000a F9 85       		beq	.L2
+  36 000b 00 00 00 00 		.loc 1 83 0
+  36      00 F4 
+  83:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     for(count = 0; count < SIZE_OF_TABLE; count++)
+  37                 	@0xfff8
+  38 000e F8 15       		add	AL,#0x0001
+  39 000f 01 34       		st	AL,@0xfff8
+  40 0010 F8 25       		cmp	AL,#0x000f
+  41 0011 0F 84       		bne	.L3
+  42 0012 00 00 00 00 	.L2:
+  42      00 F0 
+  43                 		ld	AL,@0xfff8
+  44 0015 F8 15       		asl	#0x0001
+  45 0016 01 A0       		ld	X,@$XAP_AL
+  46 0017 00 00 00 19 		ld	AL,@(csr_mesh_pskey_offset_table+1+0,X)
+  47 0019 00 00 00 16 		.loc 1 91 0
+  85:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+  86:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return csr_mesh_pskey_offset_table[count].offset;
+  87:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+  88:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  89:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+  90:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+  48                 	0002
+  49 001b FE 0F       	.LFE2:
+  50                 		.size	getPsKeyOffset, .-getPsKeyOffset
+  51                 		.equ	__size_of_getPsKeyOffset,. - getPsKeyOffset
+  52                 		.section	.text.CSRmeshPsInit,"ax",@progbits
+  53                 		.global	CSRmeshPsInit
+  54                 		.type	CSRmeshPsInit, @function
+  55                 	CSRmeshPsInit:
+  56                 	.LFB3:
+  57                 		.loc 1 106 0
+  91:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****   CSRmeshPsInit
+  92:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+  93:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+  94:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Initialise Persistent Store
+  95:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+  96:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+  97:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS has been initialised
+  98:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      successfully
+  99:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 100:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 101:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsInit(void)
+ 102:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 103:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     /* No initialization required here as the NVM is already initialized 
+ 104:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****      * by the application. Return SUCCESS.
+ 105:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****      */
+  58                 	1 0
+ 106:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** MESH_RESULT_SUCCESS;
+ 107:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 108:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 109:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 110:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+  59                 	ld	AL,#0x0000
+  60 0000 00 14       		bra	0,X
+  61 0001 00 E2       	.LFE3:
+  62                 		.size	CSRmeshPsInit, .-CSRmeshPsInit
+  63                 		.global	__size_of_CSRmeshPsInit
+  64                 		.equ	__size_of_CSRmeshPsInit,. - CSRmeshPsInit
+  65                 		.section	.text.CSRmeshPsDeInit,"ax",@progbits
+  66                 		.global	CSRmeshPsDeInit
+  67                 		.type	CSRmeshPsDeInit, @function
+  68                 	CSRmeshPsDeInit:
+  69                 	.LFB12:
+  70                 		.loc 1 279 0
+ 111:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** ME 
+ 112:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *     CSRmeshIsPsReadyForAccess
+ 113:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 114:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  * DESCRIPTION
+ 115:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *     This function returns TRUE if the PS is ready for access
+ 116:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 117:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  * RETURNS/Modifies 
+ 118:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *     TRUE if PS is ready for access
+ 119:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 120:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 121:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CsrBool CSRmeshIsPsReadyForAccess()
+ 122:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 123:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     CsrBool result = FALSE;
+ 124:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     CsrUint16 csrmesh_nvm_sanity;
+ 125:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     
+ 126:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(&csrmesh_nvm_sanity, 1, CSR_MESH_NVM_SANITY_WORD_OFFSET);
+ 127:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     
+ 128:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     if( csrmesh_nvm_sanity == CSR_MESH_NVM_SANITY_WORD)
+ 129:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {
+ 130:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         result = TRUE;
+ 131:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     }
+ 132:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     else
+ 133:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     {
+ 134:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         csrmesh_nvm_sanity = CSR_MESH_NVM_SANITY_WORD;
+ 135:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         Nvm_Write(&csrmesh_nvm_sanity, 1, CSR_MESH_NVM_SANITY_WORD_OFFSET);
+ 136:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     }
+ 137:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return result;
+ 138:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 139:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 140:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 141:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 142:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsReadSecureKey
+ 143:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 144:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 145:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Read the encryption key from secure store
+ 146:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 147:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 148:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CsrUint16 * - Returns pointer to the secure key, present in application
+ 149:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 150:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 151:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CsrUint16 * CSRmeshPsReadSecureKey(void)
+ 152:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 153:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return Nvm_Read_Secure_Key();
+ 154:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 155:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 156:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 157:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 158:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsRead
+ 159:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 160:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 161:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Read from Persistent Store
+ 162:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 163:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 164:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS-read was successful or not
+ 165:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 166:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 167:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsRead(CsrUint8 key, CsrUint16 *valueBuffer, CsrUint16 length)
+ 168:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 169:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(valueBuffer, length, getPsKeyOffset(key));
+ 170:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return CSR_MESH_RESULT_SUCCESS;
+ 171:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 172:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 173:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 174:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 175:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsReadWithOffset
+ 176:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 177:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 178:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Read from Persistent Store with an offset
+ 179:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 180:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 181:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS-read was successful or not
+ 182:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 183:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 184:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsReadWithOffset(CsrUint8 key, CsrUint16 offset, CsrUint16 *valueBuffer
+ 185:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 186:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(valueBuffer, length, getPsKeyOffset(key) + offset);
+ 187:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return CSR_MESH_RESULT_SUCCESS;
+ 188:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 189:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 190:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 191:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 192:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsSecureRead
+ 193:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 194:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 195:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Read from Persistent Store
+ 196:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 197:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 198:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS-read was successful or not
+ 199:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 200:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 201:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsSecureRead(CsrUint8 key, CsrUint16 *valueBuffer, CsrUint16 length)
+ 202:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 203:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     /* There is no special secure memory on CSR10xx platform so storing the
+ 204:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****      * the values in the same NVM as other values.
+ 205:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****      */
+ 206:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(valueBuffer, length, getPsKeyOffset(key));
+ 207:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return CSR_MESH_RESULT_SUCCESS;
+ 208:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 209:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 210:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 211:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 212:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsWrite
+ 213:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 214:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 215:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Write to Persistent Store
+ 216:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 217:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 218:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS-write was successful or not
+ 219:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 220:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 221:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsWrite(CsrUint8 key, CsrUint16 *valueBuffer, CsrUint16 length)
+ 222:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 223:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Write(valueBuffer, length, getPsKeyOffset(key));
+ 224:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return CSR_MESH_RESULT_SUCCESS;
+ 225:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 226:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 227:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 228:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 229:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsWriteWithOffset
+ 230:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 231:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 232:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Write to Persistent Store with an offset
+ 233:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 234:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 235:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS-write was successful or not
+ 236:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 237:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 238:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsWriteWithOffset(CsrUint8 key, CsrUint16 offset, CsrUint16 *valueBuffe
+ 239:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 240:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Write(valueBuffer, length, getPsKeyOffset(key) + offset);
+ 241:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return CSR_MESH_RESULT_SUCCESS;
+ 242:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 243:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 244:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 245:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 246:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsSecureWrite
+ 247:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 248:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 249:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      Securely Write to Persistent Store
+ 250:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 251:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 252:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshResult - Indicating if PS-write was successful or not
+ 253:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 254:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 255:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern CSRmeshResult CSRmeshPsSecureWrite(CsrUint8 key, CsrUint16 *valueBuffer, CsrUint16 length)
+ 256:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 257:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     /* There is no special secure memory on CSR10xx platform so storing the
+ 258:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****      * the values in the same NVM 
+ 259:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****      */
+ 260:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Write(valueBuffer, length, getPsKeyOffset(key));
+ 261:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return CSR_MESH_RESULT_SUCCESS;
+ 262:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 263:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+ 264:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** /*----------------------------------------------------------------------------*
+ 265:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  NAME
+ 266:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      CSRmeshPsDeInit
+ 267:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 268:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  DESCRIPTION
+ 269:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      De-Initialise Persistent Store
+ 270:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *
+ 271:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *  RETURNS/MODIFIES
+ 272:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *      void
+ 273:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****  *----------------------------------------------------------------------------*/
+ 274:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** extern void CSRmeshPsDeInit(void)
+ 275:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 276:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     /* Nothing to be done here */
+ 277:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 278:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** 
+  71                 	0
+ 279:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** ...
+  72                 	bra	0,X
+  73 0000 00 E2       	.LFE12:
+  74                 		.size	CSRmeshPsDeInit, .-CSRmeshPsDeInit
+  75                 		.global	__size_of_CSRmeshPsDeInit
+  76                 		.equ	__size_of_CSRmeshPsDeInit,. - CSRmeshPsDeInit
+  77                 		.section	.text.CSRmeshPsSecureWrite,"ax",@progbits
+  78                 		.global	CSRmeshPsSecureWrite
+  79                 		.type	CSRmeshPsSecureWrite, @function
+  80                 	CSRmeshPsSecureWrite:
+  81                 	.LFB11:
+  82                 		.loc 1 260 0
+ 260:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+  83                 	erl	#0x0004
+  84                 	.LCFI1:
+  85 0000 FC 0B       		st	AH,@(0x0001,Y)
+  86                 		.loc 1 264 0
+  87 0001 01 23       		bsr	getPsKeyOffset
+ 264:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Write(valueBuffer, length, getPsKeyOffset(key));
+  88                 	:
+  89 0002 00 00 00 00 		st	AL,@(0,Y)
+  89      00 9C 
+  90                 		ld	AL,@(0x0001,Y)
+  91 0005 00 27       		ld	AH,@(0x0004,Y)
+  92 0006 01 17       		bsr	Nvm_Write
+  93 0007 04 13       		.loc 1 266 0
+  94 0008 00 00 00 00 		ld	AL,#0x0000
+  94      00 9C 
+ 266:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+  95                 		#0x0004
+  96 000b 00 14       	.LFE11:
+  97 000c FC 0F       		.size	CSRmeshPsSecureWrite, .-CSRmeshPsSecureWrite
+  98                 		.global	__size_of_CSRmeshPsSecureWrite
+  99                 		.equ	__size_of_CSRmeshPsSecureWrite,. - CSRmeshPsSecureWrite
+ 100                 		.section	.text.CSRmeshPsWriteWithOffset,"ax",@progbits
+ 101                 		.global	CSRmeshPsWriteWithOffset
+ 102                 		.type	CSRmeshPsWriteWithOffset, @function
+ 103                 	CSRmeshPsWriteWithOffset:
+ 104                 	.LFB10:
+ 105                 		.loc 1 243 0
+ 106                 	.LVL5:
+ 243:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 107                 	004
+ 108                 	.LCFI2:
+ 109 0000 FC 0B       		st	AH,@(0x0001,Y)
+ 110                 		.loc 1 244 0
+ 111 0001 01 23       		bsr	getPsKeyOffset
+ 244:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Write(valueBuffer, length, getPsKeyOffset(key) + offset);
+ 112                 	:
+ 113 0002 00 00 00 00 		add	AL,@(0x0001,Y)
+ 113      00 9C 
+ 114                 		st	AL,@(0,Y)
+ 115 0005 01 37       		ld	AL,@(0x0004,Y)
+ 116 0006 00 27       		ld	AH,@(0x0005,Y)
+ 117 0007 04 17       		bsr	Nvm_Write
+ 118 0008 05 13       		.loc 1 246 0
+ 119 0009 00 00 00 00 		ld	AL,#0x0000
+ 119      00 9C 
+ 246:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 120                 	#0x0004
+ 121 000c 00 14       	.LFE10:
+ 122 000d FC 0F       		.size	CSRmeshPsWriteWithOffset, .-CSRmeshPsWriteWithOffset
+ 123                 		.global	__size_of_CSRmeshPsWriteWithOffset
+ 124                 		.equ	__size_of_CSRmeshPsWriteWithOffset,. - CSRmeshPsWriteWithOffset
+ 125                 		.section	.text.CSRmeshPsWrite,"ax",@progbits
+ 126                 		.global	CSRmeshPsWrite
+ 127                 		.type	CSRmeshPsWrite, @function
+ 128                 	CSRmeshPsWrite:
+ 129                 	.LFB9:
+ 130                 		.loc 1 226 0
+ 131                 	.LVL7:
+ 226:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 132                 	004
+ 133                 	.LCFI3:
+ 134 0000 FC 0B       		st	AH,@(0x0001,Y)
+ 135                 		.loc 1 227 0
+ 136 0001 01 23       		bsr	getPsKeyOffset
+ 227:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Write(valueBuffer, length, getPsKeyOffset(key));
+ 137                 	:
+ 138 0002 00 00 00 00 		st	AL,@(0,Y)
+ 138      00 9C 
+ 139                 		ld	AL,@(0x0001,Y)
+ 140 0005 00 27       		ld	AH,@(0x0004,Y)
+ 141 0006 01 17       		bsr	Nvm_Write
+ 142 0007 04 13       		.loc 1 229 0
+ 143 0008 00 00 00 00 		ld	AL,#0x0000
+ 143      00 9C 
+ 229:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 144                 		#0x0004
+ 145 000b 00 14       	.LFE9:
+ 146 000c FC 0F       		.size	CSRmeshPsWrite, .-CSRmeshPsWrite
+ 147                 		.global	__size_of_CSRmeshPsWrite
+ 148                 		.equ	__size_of_CSRmeshPsWrite,. - CSRmeshPsWrite
+ 149                 		.section	.text.CSRmeshPsSecureRead,"ax",@progbits
+ 150                 		.global	CSRmeshPsSecureRead
+ 151                 		.type	CSRmeshPsSecureRead, @function
+ 152                 	CSRmeshPsSecureRead:
+ 153                 	.LFB8:
+ 154                 		.loc 1 206 0
+ 155                 	.LVL9:
+ 206:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 156                 	004
+ 157                 	.LCFI4:
+ 158 0000 FC 0B       		st	AH,@(0x0001,Y)
+ 159                 		.loc 1 210 0
+ 160 0001 01 23       		bsr	getPsKeyOffset
+ 210:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(valueBuffer, length, getPsKeyOffset(key));
+ 161                 	0:
+ 162 0002 00 00 00 00 		st	AL,@(0,Y)
+ 162      00 9C 
+ 163                 		ld	AL,@(0x0001,Y)
+ 164 0005 00 27       		ld	AH,@(0x0004,Y)
+ 165 0006 01 17       		bsr	Nvm_Read
+ 166 0007 04 13       		.loc 1 212 0
+ 167 0008 00 00 00 00 		ld	AL,#0x0000
+ 167      00 9C 
+ 212:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 168                 		#0x0004
+ 169 000b 00 14       	.LFE8:
+ 170 000c FC 0F       		.size	CSRmeshPsSecureRead, .-CSRmeshPsSecureRead
+ 171                 		.global	__size_of_CSRmeshPsSecureRead
+ 172                 		.equ	__size_of_CSRmeshPsSecureRead,. - CSRmeshPsSecureRead
+ 173                 		.section	.text.CSRmeshPsReadWithOffset,"ax",@progbits
+ 174                 		.global	CSRmeshPsReadWithOffset
+ 175                 		.type	CSRmeshPsReadWithOffset, @function
+ 176                 	CSRmeshPsReadWithOffset:
+ 177                 	.LFB7:
+ 178                 		.loc 1 189 0
+ 179                 	.LVL11:
+ 189:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 180                 	004
+ 181                 	.LCFI5:
+ 182 0000 FC 0B       		st	AH,@(0x0001,Y)
+ 183                 		.loc 1 190 0
+ 184 0001 01 23       		bsr	getPsKeyOffset
+ 190:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(valueBuffer, length, getPsKeyOffset(key) + offset);
+ 185                 	2:
+ 186 0002 00 00 00 00 		add	AL,@(0x0001,Y)
+ 186      00 9C 
+ 187                 		st	AL,@(0,Y)
+ 188 0005 01 37       		ld	AL,@(0x0004,Y)
+ 189 0006 00 27       		ld	AH,@(0x0005,Y)
+ 190 0007 04 17       		bsr	Nvm_Read
+ 191 0008 05 13       		.loc 1 192 0
+ 192 0009 00 00 00 00 		ld	AL,#0x0000
+ 192      00 9C 
+ 192:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 193                 	#0x0004
+ 194 000c 00 14       	.LFE7:
+ 195 000d FC 0F       		.size	CSRmeshPsReadWithOffset, .-CSRmeshPsReadWithOffset
+ 196                 		.global	__size_of_CSRmeshPsReadWithOffset
+ 197                 		.equ	__size_of_CSRmeshPsReadWithOffset,. - CSRmeshPsReadWithOffset
+ 198                 		.section	.text.CSRmeshPsRead,"ax",@progbits
+ 199                 		.global	CSRmeshPsRead
+ 200                 		.type	CSRmeshPsRead, @function
+ 201                 	CSRmeshPsRead:
+ 202                 	.LFB6:
+ 203                 		.loc 1 172 0
+ 204                 	.LVL13:
+ 172:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 205                 	004
+ 206                 	.LCFI6:
+ 207 0000 FC 0B       		st	AH,@(0x0001,Y)
+ 208                 		.loc 1 173 0
+ 209 0001 01 23       		bsr	getPsKeyOffset
+ 173:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(valueBuffer, length, getPsKeyOffset(key));
+ 210                 	4:
+ 211 0002 00 00 00 00 		st	AL,@(0,Y)
+ 211      00 9C 
+ 212                 		ld	AL,@(0x0001,Y)
+ 213 0005 00 27       		ld	AH,@(0x0004,Y)
+ 214 0006 01 17       		bsr	Nvm_Read
+ 215 0007 04 13       		.loc 1 175 0
+ 216 0008 00 00 00 00 		ld	AL,#0x0000
+ 216      00 9C 
+ 175:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 217                 		#0x0004
+ 218 000b 00 14       	.LFE6:
+ 219 000c FC 0F       		.size	CSRmeshPsRead, .-CSRmeshPsRead
+ 220                 		.global	__size_of_CSRmeshPsRead
+ 221                 		.equ	__size_of_CSRmeshPsRead,. - CSRmeshPsRead
+ 222                 		.section	.text.CSRmeshIsPsReadyForAccess,"ax",@progbits
+ 223                 		.global	CSRmeshIsPsReadyForAccess
+ 224                 		.type	CSRmeshIsPsReadyForAccess, @function
+ 225                 	CSRmeshIsPsReadyForAccess:
+ 226                 	.LFB4:
+ 227                 		.loc 1 126 0
+ 228                 		enterl	#0x0004
+ 126:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 229                 	c 1 130 0
+ 230 0000 FC 0B       		ld	AL,#0x010b
+ 231                 		st	AL,@(0,Y)
+ 130:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     Nvm_Read(&csrmesh_nvm_sanity, 1, CSR_MESH_NVM_SANITY_WORD_OFFSET);
+ 232                 		AL,@$XAP_UY
+ 233 0001 01 00 0B 14 		add	AL,#0x0001
+ 234 0003 00 27       		ld	AH,#0x0001
+ 235 0004 00 00 00 15 		bsr	Nvm_Read
+ 236 0006 01 34       		.loc 1 132 0
+ 237 0007 01 10       		ld	AL,@(0x0001,Y)
+ 238 0008 00 00 00 00 	.LVL15:
+ 238      00 9C 
+ 132:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     if( csrmesh_nvm_sanity == CSR_MESH_NVM_SANITY_WORD)
+ 239                 	,#0x0050
+ 240 000b 01 17       		bne	.L23
+ 241                 	.LVL16:
+ 242 000c 50 84       		ld	AL,#0x0001
+ 243 000d 00 00 00 00 	.LVL17:
+ 243      00 F0 
+ 244                 		bra	.L24
+ 245 0010 01 14       	.LVL18:
+ 246                 	.L23:
+ 247 0011 00 00 00 00 		.loc 1 138 0
+ 247      00 E0 
+ 248                 		ld	AL,#0x0050
+ 249                 	.LVL19:
+ 138:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         csrmesh_nvm_sanity = CSR_MESH_NVM_SANITY_WORD;
+ 250                 	0001,Y)
+ 251 0014 50 14       	.LVL20:
+ 252                 		.loc 1 139 0
+ 253 0015 01 27       		ld	AL,#0x010b
+ 254                 		st	AL,@(0,Y)
+ 139:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****         Nvm_Write(&csrmesh_nvm_sanity, 1, CSR_MESH_NVM_SANITY_WORD_OFFSET);
+ 255                 	L,@$XAP_UY
+ 256 0016 01 00 0B 14 		add	AL,#0x0001
+ 257 0018 00 27       		ld	AH,#0x0001
+ 258 0019 00 00 00 15 		bsr	Nvm_Write
+ 259 001b 01 34       		ld	AL,#0x0000
+ 260 001c 01 10       	.LVL21:
+ 261 001d 00 00 00 00 	.L24:
+ 261      00 9C 
+ 262 0020 00 14       	.LVL22:
+ 263                 		.loc 1 142 0
+ 264                 		leavel	#0x0004
+ 265                 	.LFE4:
+ 142:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** }
+ 266                 	eshIsPsReadyForAccess, .-CSRmeshIsPsReadyForAccess
+ 267 0021 FC 0F       		.global	__size_of_CSRmeshIsPsReadyForAccess
+ 268                 		.equ	__size_of_CSRmeshIsPsReadyForAccess,. - CSRmeshIsPsReadyForAccess
+ 269                 		.section	.text.CSRmeshPsReadSecureKey,"ax",@progbits
+ 270                 		.global	CSRmeshPsReadSecureKey
+ 271                 		.type	CSRmeshPsReadSecureKey, @function
+ 272                 	CSRmeshPsReadSecureKey:
+ 273                 	.LFB5:
+ 274                 		.loc 1 156 0
+ 275                 		.loc 1 157 0
+ 276                 		bra	Nvm_Read_Secure_Key
+ 156:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c **** {
+ 277                 	ze	CSRmeshPsReadSecureKey, .-CSRmeshPsReadSecureKey
+ 157:../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c ****     return Nvm_Read_Secure_Key();
+ 278                 	.global	__size_of_CSRmeshPsReadSecureKey
+ 279 0000 00 00 00 00 		.equ	__size_of_CSRmeshPsReadSecureKey,. - CSRmeshPsReadSecureKey
+ 279      00 E0 
+ 280                 		.section	.rodata.csr_mesh_pskey_offset_table,"a",@progbits
+ 281                 		.type	csr_mesh_pskey_offset_table, @object
+ 282                 		.size	csr_mesh_pskey_offset_table, 30
+ 283                 	csr_mesh_pskey_offset_table:
+ 284                 		.word	0x0000
+ 285                 		.word	0x010b
+ 286                 		.word	0x0001
+ 287                 		.word	0x010c
+ 288 0000 00 00       		.word	0x0002
+ 289 0001 01 0B       		.word	0x0114
+ 290 0002 00 01       		.word	0x0003
+ 291 0003 01 0C       		.word	0x0118
+ 292 0004 00 02       		.word	0x0004
+ 293 0005 01 14       		.word	0x0119
+ 294 0006 00 03       		.word	0x0005
+ 295 0007 01 18       		.word	0x0121
+ 296 0008 00 04       		.word	0x0006
+ 297 0009 01 19       		.word	0x0122
+ 298 000a 00 05       		.word	0x0007
+ 299 000b 01 21       		.word	0x0124
+ 300 000c 00 06       		.word	0x0008
+ 301 000d 01 22       		.word	0x0126
+ 302 000e 00 07       		.word	0x0009
+ 303 000f 01 24       		.word	0x012a
+ 304 0010 00 08       		.word	0x000a
+ 305 0011 01 26       		.word	0x012b
+ 306 0012 00 09       		.word	0x000b
+ 307 0013 01 2A       		.word	0x012c
+ 308 0014 00 0A       		.word	0x000c
+ 309 0015 01 2B       		.word	0x0138
+ 310 0016 00 0B       		.word	0x000d
+ 311 0017 01 2C       		.word	0x013c
+ 312 0018 00 0C       		.word	0x000e
+ 313 0019 01 38       		.word	0x013d
+ 314 001a 00 0D       		.section	.debug_frame,"",@progbits
+ 315 001b 01 3C       	.Lframe0:
+ 316 001c 00 0E       		.4byte	.LECIE0-.LSCIE0
+ 317 001d 01 3D       	.LSCIE0:
+ 318                 		.4byte	0xffffffff
+ 319                 		.1byte	0x1
+ 320 0000 00 00 00 00 		.ascii "\000"
+ 321                 		.1byte	0x1
+ 322 0002 FF FF FF FF 		.1byte	0x7f
+ 323 0004 01          		.1byte	0x3
+ 324 0004 00          		.1byte	0xc
+ 325 0005 01          		.1byte	0x5
+ 326 0005 7F          		.1byte	0x0
+ 327 0006 03          		.p2align	2
+ 328 0006 0C          	.LECIE0:
+ 329 0007 05          	.LSFDE0:
+ 330 0007 00          		.4byte	.LEFDE0-.LASFDE0
+ 331                 	.LASFDE0:
+ 332                 		.4byte	.Lframe0
+ 333                 		.4byte	.LFB2
+ 334 0008 00 00 00 00 		.4byte	.LFE2-.LFB2
+ 335                 		.1byte	0x4
+ 336 000a 00 00 00 00 		.4byte	.LCFI0-.LFB2
+ 337 000c 00 00 00 00 		.1byte	0xe
+ 338 000e 00 00 00 00 		.1byte	0x2
+ 339 0010 41          		.1byte	0x83
+ 340                 		.1byte	0x2
+ 341 0010 0E          		.1byte	0x82
+ 342 0011 02          		.1byte	0x1
+ 343 0011 83          		.p2align	2
+ 344 0012 02          	.LEFDE0:
+ 345 0012 82          	.LSFDE2:
+ 346 0013 01          		.4byte	.LEFDE2-.LASFDE2
+ 347 0013 00          	.LASFDE2:
+ 348                 		.4byte	.Lframe0
+ 349                 		.4byte	.LFB3
+ 350 0014 00 00 00 00 		.4byte	.LFE3-.LFB3
+ 351                 		.p2align	2
+ 352 0016 00 00 00 00 	.LEFDE2:
+ 353 0018 00 00 00 00 	.LSFDE4:
+ 354 001a 00 00 00 02 		.4byte	.LEFDE4-.LASFDE4
+ 355                 	.LASFDE4:
+ 356                 		.4byte	.Lframe0
+ 357                 		.4byte	.LFB12
+ 358 001c 00 00 00 00 		.4byte	.LFE12-.LFB12
+ 359                 		.p2align	2
+ 360 001e 00 00 00 00 	.LEFDE4:
+ 361 0020 00 00 00 00 	.LSFDE6:
+ 362 0022 00 00 00 01 		.4byte	.LEFDE6-.LASFDE6
+ 363                 	.LASFDE6:
+ 364                 		.4byte	.Lframe0
+ 365                 		.4byte	.LFB11
+ 366 0024 00 00 00 00 		.4byte	.LFE11-.LFB11
+ 367                 		.1byte	0x4
+ 368 0026 00 00 00 00 		.4byte	.LCFI1-.LFB11
+ 369 0028 00 00 00 00 		.1byte	0xe
+ 370 002a 00 00 00 00 		.1byte	0x4
+ 371 002c 41          		.1byte	0x83
+ 372                 		.1byte	0x2
+ 373 002c 0E          		.1byte	0x82
+ 374 002d 04          		.1byte	0x1
+ 375 002d 83          		.p2align	2
+ 376 002e 02          	.LEFDE6:
+ 377 002e 82          	.LSFDE8:
+ 378 002f 01          		.4byte	.LEFDE8-.LASFDE8
+ 379 002f 00          	.LASFDE8:
+ 380                 		.4byte	.Lframe0
+ 381                 		.4byte	.LFB10
+ 382 0030 00 00 00 00 		.4byte	.LFE10-.LFB10
+ 383                 		.1byte	0x4
+ 384 0032 00 00 00 00 		.4byte	.LCFI2-.LFB10
+ 385 0034 00 00 00 00 		.1byte	0xe
+ 386 0036 00 00 00 00 		.1byte	0x4
+ 387 0038 41          		.1byte	0x83
+ 388                 		.1byte	0x2
+ 389 0038 0E          		.1byte	0x82
+ 390 0039 04          		.1byte	0x1
+ 391 0039 83          		.p2align	2
+ 392 003a 02          	.LEFDE8:
+ 393 003a 82          	.LSFDE10:
+ 394 003b 01          		.4byte	.LEFDE10-.LASFDE10
+ 395 003b 00          	.LASFDE10:
+ 396                 		.4byte	.Lframe0
+ 397                 		.4byte	.LFB9
+ 398 003c 00 00 00 00 		.4byte	.LFE9-.LFB9
+ 399                 		.1byte	0x4
+ 400 003e 00 00 00 00 		.4byte	.LCFI3-.LFB9
+ 401 0040 00 00 00 00 		.1byte	0xe
+ 402 0042 00 00 00 00 		.1byte	0x4
+ 403 0044 41          		.1byte	0x83
+ 404                 		.1byte	0x2
+ 405 0044 0E          		.1byte	0x82
+ 406 0045 04          		.1byte	0x1
+ 407 0045 83          		.p2align	2
+ 408 0046 02          	.LEFDE10:
+ 409 0046 82          	.LSFDE12:
+ 410 0047 01          		.4byte	.LEFDE12-.LASFDE12
+ 411 0047 00          	.LASFDE12:
+ 412                 		.4byte	.Lframe0
+ 413                 		.4byte	.LFB8
+ 414 0048 00 00 00 00 		.4byte	.LFE8-.LFB8
+ 415                 		.1byte	0x4
+ 416 004a 00 00 00 00 		.4byte	.LCFI4-.LFB8
+ 417 004c 00 00 00 00 		.1byte	0xe
+ 418 004e 00 00 00 00 		.1byte	0x4
+ 419 0050 41          		.1byte	0x83
+ 420                 		.1byte	0x2
+ 421 0050 0E          		.1byte	0x82
+ 422 0051 04          		.1byte	0x1
+ 423 0051 83          		.p2align	2
+ 424 0052 02          	.LEFDE12:
+ 425 0052 82          	.LSFDE14:
+ 426 0053 01          		.4byte	.LEFDE14-.LASFDE14
+ 427 0053 00          	.LASFDE14:
+ 428                 		.4byte	.Lframe0
+ 429                 		.4byte	.LFB7
+ 430 0054 00 00 00 00 		.4byte	.LFE7-.LFB7
+ 431                 		.1byte	0x4
+ 432 0056 00 00 00 00 		.4byte	.LCFI5-.LFB7
+ 433 0058 00 00 00 00 		.1byte	0xe
+ 434 005a 00 00 00 00 		.1byte	0x4
+ 435 005c 41          		.1byte	0x83
+ 436                 		.1byte	0x2
+ 437 005c 0E          		.1byte	0x82
+ 438 005d 04          		.1byte	0x1
+ 439 005d 83          		.p2align	2
+ 440 005e 02          	.LEFDE14:
+ 441 005e 82          	.LSFDE16:
+ 442 005f 01          		.4byte	.LEFDE16-.LASFDE16
+ 443 005f 00          	.LASFDE16:
+ 444                 		.4byte	.Lframe0
+ 445                 		.4byte	.LFB6
+ 446 0060 00 00 00 00 		.4byte	.LFE6-.LFB6
+ 447                 		.1byte	0x4
+ 448 0062 00 00 00 00 		.4byte	.LCFI6-.LFB6
+ 449 0064 00 00 00 00 		.1byte	0xe
+ 450 0066 00 00 00 00 		.1byte	0x4
+ 451 0068 41          		.1byte	0x83
+ 452                 		.1byte	0x2
+ 453 0068 0E          		.1byte	0x82
+ 454 0069 04          		.1byte	0x1
+ 455 0069 83          		.p2align	2
+ 456 006a 02          	.LEFDE16:
+ 457 006a 82          	.LSFDE18:
+ 458 006b 01          		.4byte	.LEFDE18-.LASFDE18
+ 459 006b 00          	.LASFDE18:
+ 460                 		.4byte	.Lframe0
+ 461                 		.4byte	.LFB4
+ 462 006c 00 00 00 00 		.4byte	.LFE4-.LFB4
+ 463                 		.1byte	0x4
+ 464 006e 00 00 00 00 		.4byte	.LCFI7-.LFB4
+ 465 0070 00 00 00 00 		.1byte	0xe
+ 466 0072 00 00 00 00 		.1byte	0x4
+ 467 0074 41          		.1byte	0x83
+ 468                 		.1byte	0x2
+ 469 0074 0E          		.1byte	0x82
+ 470 0075 04          		.1byte	0x1
+ 471 0075 83          		.p2align	2
+ 472 0076 02          	.LEFDE18:
+ 473 0076 82          	.LSFDE20:
+ 474 0077 01          		.4byte	.LEFDE20-.LASFDE20
+ 475 0077 00          	.LASFDE20:
+ 476                 		.4byte	.Lframe0
+ 477                 		.4byte	.LFB5
+ 478 0078 00 00 00 00 		.4byte	.LFE5-.LFB5
+ 479                 		.p2align	2
+ 480 007a 00 00 00 00 	.LEFDE20:
+ 481 007c 00 00 00 00 		.text
+ 482 007e 00 00 00 00 	.Letext0:
+ 483                 		.section	.debug_loc,"",@progbits
+ 484                 	.Ldebug_loc0:
+ 485                 	.LLST0:
+ 486                 		.4byte	.LFB2
+ 487                 		.4byte	.LCFI0
+ 488                 		.2byte	0x1
+ 489                 		.1byte	0x55
+ 490 0000 00 00 00 00 		.4byte	.LCFI0
+ 491 0002 00 00 00 00 		.4byte	.LFE2
+ 492 0004 00 01       		.2byte	0x2
+ 493 0005 55          		.1byte	0x75
+ 494 0005 00 00 00 00 		.1byte	0x2
+ 495 0007 00 00 00 00 		.4byte	0x0
+ 496 0009 00 02       		.4byte	0x0
+ 497 000a 75          	.LLST1:
+ 498 000b 02          		.4byte	.LVL0
+ 499 000b 00 00 00 00 		.4byte	.LVL1
+ 500 000d 00 00 00 00 		.2byte	0x1
+ 501                 		.1byte	0x51
+ 502 000f 00 00 00 00 		.4byte	.LVL1
+ 503 0011 00 00 00 00 		.4byte	.LFE2
+ 504 0013 00 01       		.2byte	0x1
+ 505 0014 51          		.1byte	0x58
+ 506 0015 00 00 00 00 		.4byte	0x0
+ 507 0017 00 00 00 00 		.4byte	0x0
+ 508 0019 00 01       	.LLST4:
+ 509 001a 58          		.4byte	.LFB11
+ 510 001a 00 00 00 00 		.4byte	.LCFI1
+ 511 001c 00 00 00 00 		.2byte	0x1
+ 512                 		.1byte	0x55
+ 513 001e 00 00 00 00 		.4byte	.LCFI1
+ 514 0020 00 00 00 00 		.4byte	.LFE11
+ 515 0022 00 01       		.2byte	0x2
+ 516 0023 55          		.1byte	0x75
+ 517 0024 00 00 00 00 		.1byte	0x4
+ 518 0026 00 00 00 00 		.4byte	0x0
+ 519 0028 00 02       		.4byte	0x0
+ 520 0029 75          	.LLST5:
+ 521 0029 04          		.4byte	.LVL3
+ 522 002a 00 00 00 00 		.4byte	.LVL4
+ 523 002c 00 00 00 00 		.2byte	0x1
+ 524                 		.1byte	0x51
+ 525 002e 00 00 00 00 		.4byte	0x0
+ 526 0030 00 00 00 00 		.4byte	0x0
+ 527 0032 00 01       	.LLST6:
+ 528 0033 51          		.4byte	.LVL3
+ 529 0033 00 00 00 00 		.4byte	.LVL4
+ 530 0035 00 00 00 00 		.2byte	0x1
+ 531                 		.1byte	0x50
+ 532 0037 00 00 00 00 		.4byte	.LVL4
+ 533 0039 00 00 00 00 		.4byte	.LFE11
+ 534 003b 00 01       		.2byte	0x2
+ 535 003c 50          		.1byte	0x76
+ 536 003d 00 00 00 00 		.1byte	0x1
+ 537 003f 00 00 00 00 		.4byte	0x0
+ 538 0041 00 02       		.4byte	0x0
+ 539 0042 76          	.LLST7:
+ 540 0042 01          		.4byte	.LFB10
+ 541 0043 00 00 00 00 		.4byte	.LCFI2
+ 542 0045 00 00 00 00 		.2byte	0x1
+ 543                 		.1byte	0x55
+ 544 0047 00 00 00 00 		.4byte	.LCFI2
+ 545 0049 00 00 00 00 		.4byte	.LFE10
+ 546 004b 00 01       		.2byte	0x2
+ 547 004c 55          		.1byte	0x75
+ 548 004c 00 00 00 00 		.1byte	0x4
+ 549 004e 00 00 00 00 		.4byte	0x0
+ 550 0050 00 02       		.4byte	0x0
+ 551 0051 75          	.LLST8:
+ 552 0052 04          		.4byte	.LVL5
+ 553 0052 00 00 00 00 		.4byte	.LVL6
+ 554 0054 00 00 00 00 		.2byte	0x1
+ 555                 		.1byte	0x51
+ 556 0056 00 00 00 00 		.4byte	0x0
+ 557 0058 00 00 00 00 		.4byte	0x0
+ 558 005a 00 01       	.LLST9:
+ 559 005b 51          		.4byte	.LVL5
+ 560 005c 00 00 00 00 		.4byte	.LVL6
+ 561 005e 00 00 00 00 		.2byte	0x1
+ 562                 		.1byte	0x50
+ 563 0060 00 00 00 00 		.4byte	.LVL6
+ 564 0062 00 00 00 00 		.4byte	.LFE10
+ 565 0064 00 01       		.2byte	0x2
+ 566 0065 50          		.1byte	0x76
+ 567 0065 00 00 00 00 		.1byte	0x1
+ 568 0067 00 00 00 00 		.4byte	0x0
+ 569 0069 00 02       		.4byte	0x0
+ 570 006a 76          	.LLST10:
+ 571 006b 01          		.4byte	.LFB9
+ 572 006b 00 00 00 00 		.4byte	.LCFI3
+ 573 006d 00 00 00 00 		.2byte	0x1
+ 574                 		.1byte	0x55
+ 575 006f 00 00 00 00 		.4byte	.LCFI3
+ 576 0071 00 00 00 00 		.4byte	.LFE9
+ 577 0073 00 01       		.2byte	0x2
+ 578 0074 55          		.1byte	0x75
+ 579 0075 00 00 00 00 		.1byte	0x4
+ 580 0077 00 00 00 00 		.4byte	0x0
+ 581 0079 00 02       		.4byte	0x0
+ 582 007a 75          	.LLST11:
+ 583 007a 04          		.4byte	.LVL7
+ 584 007b 00 00 00 00 		.4byte	.LVL8
+ 585 007d 00 00 00 00 		.2byte	0x1
+ 586                 		.1byte	0x51
+ 587 007f 00 00 00 00 		.4byte	0x0
+ 588 0081 00 00 00 00 		.4byte	0x0
+ 589 0083 00 01       	.LLST12:
+ 590 0084 51          		.4byte	.LVL7
+ 591 0084 00 00 00 00 		.4byte	.LVL8
+ 592 0086 00 00 00 00 		.2byte	0x1
+ 593                 		.1byte	0x50
+ 594 0088 00 00 00 00 		.4byte	.LVL8
+ 595 008a 00 00 00 00 		.4byte	.LFE9
+ 596 008c 00 01       		.2byte	0x2
+ 597 008d 50          		.1byte	0x76
+ 598 008e 00 00 00 00 		.1byte	0x1
+ 599 0090 00 00 00 00 		.4byte	0x0
+ 600 0092 00 02       		.4byte	0x0
+ 601 0093 76          	.LLST13:
+ 602 0093 01          		.4byte	.LFB8
+ 603 0094 00 00 00 00 		.4byte	.LCFI4
+ 604 0096 00 00 00 00 		.2byte	0x1
+ 605                 		.1byte	0x55
+ 606 0098 00 00 00 00 		.4byte	.LCFI4
+ 607 009a 00 00 00 00 		.4byte	.LFE8
+ 608 009c 00 01       		.2byte	0x2
+ 609 009d 55          		.1byte	0x75
+ 610 009d 00 00 00 00 		.1byte	0x4
+ 611 009f 00 00 00 00 		.4byte	0x0
+ 612 00a1 00 02       		.4byte	0x0
+ 613 00a2 75          	.LLST14:
+ 614 00a3 04          		.4byte	.LVL9
+ 615 00a3 00 00 00 00 		.4byte	.LVL10
+ 616 00a5 00 00 00 00 		.2byte	0x1
+ 617                 		.1byte	0x51
+ 618 00a7 00 00 00 00 		.4byte	0x0
+ 619 00a9 00 00 00 00 		.4byte	0x0
+ 620 00ab 00 01       	.LLST15:
+ 621 00ac 51          		.4byte	.LVL9
+ 622 00ad 00 00 00 00 		.4byte	.LVL10
+ 623 00af 00 00 00 00 		.2byte	0x1
+ 624                 		.1byte	0x50
+ 625 00b1 00 00 00 00 		.4byte	.LVL10
+ 626 00b3 00 00 00 00 		.4byte	.LFE8
+ 627 00b5 00 01       		.2byte	0x2
+ 628 00b6 50          		.1byte	0x76
+ 629 00b6 00 00 00 00 		.1byte	0x1
+ 630 00b8 00 00 00 00 		.4byte	0x0
+ 631 00ba 00 02       		.4byte	0x0
+ 632 00bb 76          	.LLST16:
+ 633 00bc 01          		.4byte	.LFB7
+ 634 00bc 00 00 00 00 		.4byte	.LCFI5
+ 635 00be 00 00 00 00 		.2byte	0x1
+ 636                 		.1byte	0x55
+ 637 00c0 00 00 00 00 		.4byte	.LCFI5
+ 638 00c2 00 00 00 00 		.4byte	.LFE7
+ 639 00c4 00 01       		.2byte	0x2
+ 640 00c5 55          		.1byte	0x75
+ 641 00c6 00 00 00 00 		.1byte	0x4
+ 642 00c8 00 00 00 00 		.4byte	0x0
+ 643 00ca 00 02       		.4byte	0x0
+ 644 00cb 75          	.LLST17:
+ 645 00cb 04          		.4byte	.LVL11
+ 646 00cc 00 00 00 00 		.4byte	.LVL12
+ 647 00ce 00 00 00 00 		.2byte	0x1
+ 648                 		.1byte	0x51
+ 649 00d0 00 00 00 00 		.4byte	0x0
+ 650 00d2 00 00 00 00 		.4byte	0x0
+ 651 00d4 00 01       	.LLST18:
+ 652 00d5 51          		.4byte	.LVL11
+ 653 00d5 00 00 00 00 		.4byte	.LVL12
+ 654 00d7 00 00 00 00 		.2byte	0x1
+ 655                 		.1byte	0x50
+ 656 00d9 00 00 00 00 		.4byte	.LVL12
+ 657 00db 00 00 00 00 		.4byte	.LFE7
+ 658 00dd 00 01       		.2byte	0x2
+ 659 00de 50          		.1byte	0x76
+ 660 00df 00 00 00 00 		.1byte	0x1
+ 661 00e1 00 00 00 00 		.4byte	0x0
+ 662 00e3 00 02       		.4byte	0x0
+ 663 00e4 76          	.LLST19:
+ 664 00e4 01          		.4byte	.LFB6
+ 665 00e5 00 00 00 00 		.4byte	.LCFI6
+ 666 00e7 00 00 00 00 		.2byte	0x1
+ 667                 		.1byte	0x55
+ 668 00e9 00 00 00 00 		.4byte	.LCFI6
+ 669 00eb 00 00 00 00 		.4byte	.LFE6
+ 670 00ed 00 01       		.2byte	0x2
+ 671 00ee 55          		.1byte	0x75
+ 672 00ee 00 00 00 00 		.1byte	0x4
+ 673 00f0 00 00 00 00 		.4byte	0x0
+ 674 00f2 00 02       		.4byte	0x0
+ 675 00f3 75          	.LLST20:
+ 676 00f4 04          		.4byte	.LVL13
+ 677 00f4 00 00 00 00 		.4byte	.LVL14
+ 678 00f6 00 00 00 00 		.2byte	0x1
+ 679                 		.1byte	0x51
+ 680 00f8 00 00 00 00 		.4byte	0x0
+ 681 00fa 00 00 00 00 		.4byte	0x0
+ 682 00fc 00 01       	.LLST21:
+ 683 00fd 51          		.4byte	.LVL13
+ 684 00fe 00 00 00 00 		.4byte	.LVL14
+ 685 0100 00 00 00 00 		.2byte	0x1
+ 686                 		.1byte	0x50
+ 687 0102 00 00 00 00 		.4byte	.LVL14
+ 688 0104 00 00 00 00 		.4byte	.LFE6
+ 689 0106 00 01       		.2byte	0x2
+ 690 0107 50          		.1byte	0x76
+ 691 0107 00 00 00 00 		.1byte	0x1
+ 692 0109 00 00 00 00 		.4byte	0x0
+ 693 010b 00 02       		.4byte	0x0
+ 694 010c 76          	.LLST22:
+ 695 010d 01          		.4byte	.LFB4
+ 696 010d 00 00 00 00 		.4byte	.LCFI7
+ 697 010f 00 00 00 00 		.2byte	0x1
+ 698                 		.1byte	0x55
+ 699 0111 00 00 00 00 		.4byte	.LCFI7
+ 700 0113 00 00 00 00 		.4byte	.LFE4
+ 701 0115 00 01       		.2byte	0x2
+ 702 0116 55          		.1byte	0x75
+ 703 0117 00 00 00 00 		.1byte	0x4
+ 704 0119 00 00 00 00 		.4byte	0x0
+ 705 011b 00 02       		.4byte	0x0
+ 706 011c 75          	.LLST23:
+ 707 011c 04          		.4byte	.LVL17
+ 708 011d 00 00 00 00 		.4byte	.LVL18
+ 709 011f 00 00 00 00 		.2byte	0x1
+ 710                 		.1byte	0x51
+ 711 0121 00 00 00 00 		.4byte	.LVL21
+ 712 0123 00 00 00 00 		.4byte	.LVL22
+ 713 0125 00 01       		.2byte	0x1
+ 714 0126 51          		.1byte	0x51
+ 715 0126 00 00 00 00 		.4byte	0x0
+ 716 0128 00 00 00 00 		.4byte	0x0
+ 717 012a 00 01       	.LLST24:
+ 718 012b 51          		.4byte	.LVL15
+ 719 012c 00 00 00 00 		.4byte	.LVL16
+ 720 012e 00 00 00 00 		.2byte	0x2
+ 721                 		.1byte	0x76
+ 722 0130 00 00 00 00 		.1byte	0x1
+ 723 0132 00 00 00 00 		.4byte	.LVL16
+ 724 0134 00 02       		.4byte	.LVL17
+ 725 0135 76          		.2byte	0x1
+ 726 0135 01          		.1byte	0x51
+ 727 0136 00 00 00 00 		.4byte	.LVL17
+ 728 0138 00 00 00 00 		.4byte	.LVL18
+ 729 013a 00 01       		.2byte	0x2
+ 730 013b 51          		.1byte	0x76
+ 731 013b 00 00 00 00 		.1byte	0x1
+ 732 013d 00 00 00 00 		.4byte	.LVL18
+ 733 013f 00 02       		.4byte	.LVL19
+ 734 0140 76          		.2byte	0x1
+ 735 0141 01          		.1byte	0x51
+ 736 0141 00 00 00 00 		.4byte	.LVL19
+ 737 0143 00 00 00 00 		.4byte	.LFE4
+ 738 0145 00 01       		.2byte	0x2
+ 739 0146 51          		.1byte	0x76
+ 740 0147 00 00 00 00 		.1byte	0x1
+ 741 0149 00 00 00 00 		.4byte	0x0
+ 742 014b 00 02       		.4byte	0x0
+ 743 014c 76          		.file 2 "D:/CSR102x_SDK-3.1.1/tools/include/CSR102x_A05/uenergy_types.h"
+ 744 014c 01          		.file 3 "../mesh_common/mesh/include/csr_types.h"
+ 745 014d 00 00 00 00 		.file 4 "../mesh_common/mesh/include/csr_mesh_result.h"
+ 746 014f 00 00 00 00 		.section	.debug_info
+ 747                 		.4byte	0x3b2
+ 748                 		.2byte	0x2
+ 749                 		.4byte	.Ldebug_abbrev0
+ 750                 		.1byte	0x4
+ 751 0000 00 00 03 B2 		.1byte	0x1
+ 752 0002 00 02       		.4byte	.LASF34
+ 753 0003 00 00 00 00 		.1byte	0x1
+ 754 0005 04          		.4byte	.LASF35
+ 755 0005 01          		.4byte	.LASF36
+ 756 0006 00 00 00 00 		.4byte	0x0
+ 757 0008 01          		.4byte	0x0
+ 758 0008 00 00 00 00 		.4byte	.Ldebug_ranges0+0x0
+ 759 000a 00 00 00 00 		.4byte	.Ldebug_line0
+ 760 000c 00 00 00 00 		.1byte	0x2
+ 761 000e 00 00 00 00 		.1byte	0x2
+ 762 0010 00 00 00 00 		.1byte	0x5
+ 763 0012 00 00 00 00 		.ascii "int\000"
+ 764 0014 02          		.1byte	0x3
+ 765 0015 02          		.1byte	0x2
+ 766 0015 05          		.1byte	0x7
+ 767 0016 69 6E 74 00 		.4byte	.LASF0
+ 768 0018 03          		.1byte	0x3
+ 769 0018 02          		.1byte	0x2
+ 770 0019 07          		.1byte	0x5
+ 771 0019 00 00 00 00 		.4byte	.LASF1
+ 772 001b 03          		.1byte	0x3
+ 773 001c 02          		.1byte	0x2
+ 774 001c 05          		.1byte	0x7
+ 775 001d 00 00 00 00 		.4byte	.LASF2
+ 776 001f 03          		.1byte	0x3
+ 777 001f 02          		.1byte	0x4
+ 778 0020 07          		.1byte	0x5
+ 779 0020 00 00 00 00 		.4byte	.LASF3
+ 780 0022 03          		.1byte	0x3
+ 781 0023 04          		.1byte	0x4
+ 782 0023 05          		.1byte	0x7
+ 783 0024 00 00 00 00 		.4byte	.LASF4
+ 784 0026 03          		.1byte	0x3
+ 785 0026 04          		.1byte	0x8
+ 786 0027 07          		.1byte	0x5
+ 787 0027 00 00 00 00 		.4byte	.LASF5
+ 788 0029 03          		.1byte	0x3
+ 789 002a 08          		.1byte	0x8
+ 790 002a 05          		.1byte	0x7
+ 791 002b 00 00 00 00 		.4byte	.LASF6
+ 792 002d 03          		.1byte	0x4
+ 793 002d 08          		.4byte	.LASF8
+ 794 002e 07          		.1byte	0x2
+ 795 002e 00 00 00 00 		.1byte	0x1e
+ 796 0030 04          		.4byte	0x6c
+ 797 0031 00 00 00 00 		.1byte	0x3
+ 798 0033 02          		.1byte	0x2
+ 799 0033 1E          		.1byte	0x8
+ 800 0034 00 00 00 6C 		.4byte	.LASF7
+ 801 0036 03          		.1byte	0x4
+ 802 0036 02          		.4byte	.LASF9
+ 803 0037 08          		.1byte	0x2
+ 804 0037 00 00 00 00 		.1byte	0x1f
+ 805 0039 04          		.4byte	0x3e
+ 806 003a 00 00 00 00 		.1byte	0x3
+ 807 003c 02          		.1byte	0x2
+ 808 003c 1F          		.1byte	0x6
+ 809 003d 00 00 00 3E 		.4byte	.LASF10
+ 810 003f 03          		.1byte	0x4
+ 811 003f 02          		.4byte	.LASF11
+ 812 0040 06          		.1byte	0x2
+ 813 0040 00 00 00 00 		.1byte	0x27
+ 814 0042 04          		.4byte	0x30
+ 815 0043 00 00 00 00 		.1byte	0x5
+ 816 0045 02          		.1byte	0x2
+ 817 0045 27          		.1byte	0x7
+ 818 0046 00 00 00 30 		.1byte	0x4
+ 819 0048 05          		.4byte	.LASF12
+ 820 0048 02          		.1byte	0x3
+ 821 0049 07          		.1byte	0x57
+ 822 0049 04          		.4byte	0x61
+ 823 004a 00 00 00 00 		.1byte	0x4
+ 824 004c 03          		.4byte	.LASF13
+ 825 004c 57          		.1byte	0x3
+ 826 004d 00 00 00 61 		.1byte	0x58
+ 827 004f 04          		.4byte	0x73
+ 828 004f 00 00 00 00 		.1byte	0x3
+ 829 0051 03          		.1byte	0x2
+ 830 0052 58          		.1byte	0x8
+ 831 0052 00 00 00 73 		.4byte	.LASF14
+ 832 0054 03          		.1byte	0x4
+ 833 0055 02          		.4byte	.LASF15
+ 834 0055 08          		.1byte	0x3
+ 835 0056 00 00 00 00 		.1byte	0x69
+ 836 0058 04          		.4byte	0x85
+ 837 0058 00 00 00 00 		.1byte	0x4
+ 838 005a 03          		.4byte	.LASF16
+ 839 005b 69          		.1byte	0x4
+ 840 005b 00 00 00 85 		.1byte	0x1f
+ 841 005d 04          		.4byte	0x9e
+ 842 005e 00 00 00 00 		.1byte	0x6
+ 843 0060 04          		.1byte	0x2
+ 844 0060 1F          		.4byte	0x9e
+ 845 0061 00 00 00 9E 		.1byte	0x7
+ 846 0063 06          		.1byte	0x4
+ 847 0063 02          		.1byte	0x1
+ 848 0064 00 00 00 9E 		.1byte	0x13
+ 849 0066 07          		.4byte	0xf1
+ 850 0066 04          		.1byte	0x8
+ 851 0067 01          		.ascii "key\000"
+ 852 0067 13          		.1byte	0x1
+ 853 0068 00 00 00 F1 		.1byte	0x14
+ 854 006a 08          		.4byte	0x93
+ 855 006a 6B 65 79 00 		.1byte	0x2
+ 856 006c 01          		.1byte	0x23
+ 857 006d 14          		.1byte	0x0
+ 858 006d 00 00 00 93 		.1byte	0x9
+ 859 006f 02          		.4byte	.LASF17
+ 860 0070 23          		.1byte	0x1
+ 861 0070 00          		.1byte	0x15
+ 862 0071 09          		.4byte	0x9e
+ 863 0071 00 00 00 00 		.1byte	0x2
+ 864 0073 01          		.1byte	0x23
+ 865 0074 15          		.1byte	0x1
+ 866 0074 00 00 00 9E 		.1byte	0x0
+ 867 0076 02          		.1byte	0x4
+ 868 0077 23          		.4byte	.LASF18
+ 869 0077 01          		.1byte	0x1
+ 870 0078 00          		.1byte	0x16
+ 871 0078 04          		.4byte	0xcc
+ 872 0079 00 00 00 00 		.1byte	0xa
+ 873 007b 01          		.4byte	.LASF37
+ 874 007b 16          		.1byte	0x1
+ 875 007c 00 00 00 CC 		.1byte	0x51
+ 876 007e 0A          		.1byte	0x1
+ 877 007e 00 00 00 00 		.4byte	0x9e
+ 878 0080 01          		.4byte	.LFB2
+ 879 0081 51          		.4byte	.LFE2
+ 880 0081 01          		.4byte	.LLST0
+ 881 0082 00 00 00 9E 		.4byte	0x135
+ 882 0084 00 00 00 00 		.1byte	0xb
+ 883 0086 00 00 00 00 		.ascii "key\000"
+ 884 0088 00 00 00 00 		.1byte	0x1
+ 885 008a 00 00 01 35 		.1byte	0x50
+ 886 008c 0B          		.4byte	0x93
+ 887 008c 6B 65 79 00 		.4byte	.LLST1
+ 888 008e 01          		.1byte	0xc
+ 889 008f 50          		.4byte	.LASF28
+ 890 008f 00 00 00 93 		.1byte	0x1
+ 891 0091 00 00 00 00 		.1byte	0x52
+ 892 0093 0C          		.4byte	0x93
+ 893 0094 00 00 00 00 		.1byte	0x1
+ 894 0096 01          		.1byte	0x57
+ 895 0096 52          		.1byte	0x0
+ 896 0097 00 00 00 93 		.1byte	0xd
+ 897 0099 01          		.1byte	0x1
+ 898 0099 57          		.4byte	.LASF31
+ 899 009a 00          		.1byte	0x1
+ 900 009a 0D          		.1byte	0x6a
+ 901 009b 01          		.1byte	0x1
+ 902 009b 00 00 00 00 		.4byte	0xbb
+ 903 009d 01          		.4byte	.LFB3
+ 904 009e 6A          		.4byte	.LFE3
+ 905 009e 01          		.1byte	0x1
+ 906 009f 00 00 00 BB 		.1byte	0x55
+ 907 00a1 00 00 00 00 		.1byte	0xe
+ 908 00a3 00 00 00 00 		.1byte	0x1
+ 909 00a5 01          		.4byte	.LASF38
+ 910 00a5 55          		.1byte	0x1
+ 911 00a6 0E          		.2byte	0x117
+ 912 00a6 01          		.1byte	0x1
+ 913 00a7 00 00 00 00 		.4byte	.LFB12
+ 914 00a9 01          		.4byte	.LFE12
+ 915 00a9 01 17       		.1byte	0x1
+ 916 00aa 01          		.1byte	0x55
+ 917 00ab 00 00 00 00 		.1byte	0xf
+ 918 00ad 00 00 00 00 		.1byte	0x1
+ 919 00af 01          		.4byte	.LASF21
+ 920 00af 55          		.1byte	0x1
+ 921 00b0 0F          		.2byte	0x104
+ 922 00b0 01          		.1byte	0x1
+ 923 00b1 00 00 00 00 		.4byte	0xbb
+ 924 00b3 01          		.4byte	.LFB11
+ 925 00b3 01 04       		.4byte	.LFE11
+ 926 00b4 01          		.4byte	.LLST4
+ 927 00b5 00 00 00 BB 		.4byte	0x1ae
+ 928 00b7 00 00 00 00 		.1byte	0x10
+ 929 00b9 00 00 00 00 		.ascii "key\000"
+ 930 00bb 00 00 00 00 		.1byte	0x1
+ 931 00bd 00 00 01 AE 		.2byte	0x103
+ 932 00bf 10          		.4byte	0x93
+ 933 00bf 6B 65 79 00 		.4byte	.LLST5
+ 934 00c1 01          		.1byte	0x11
+ 935 00c2 01 03       		.4byte	.LASF19
+ 936 00c3 00 00 00 93 		.1byte	0x1
+ 937 00c5 00 00 00 00 		.2byte	0x103
+ 938 00c7 11          		.4byte	0xc6
+ 939 00c7 00 00 00 00 		.4byte	.LLST6
+ 940 00c9 01          		.1byte	0x12
+ 941 00ca 01 03       		.4byte	.LASF20
+ 942 00cb 00 00 00 C6 		.1byte	0x1
+ 943 00cd 00 00 00 00 		.2byte	0x103
+ 944 00cf 12          		.4byte	0x9e
+ 945 00cf 00 00 00 00 		.1byte	0x2
+ 946 00d1 01          		.1byte	0x91
+ 947 00d2 01 03       		.1byte	0x0
+ 948 00d3 00 00 00 9E 		.1byte	0x0
+ 949 00d5 02          		.1byte	0x13
+ 950 00d5 91          		.1byte	0x1
+ 951 00d6 00          		.4byte	.LASF22
+ 952 00d6 00          		.1byte	0x1
+ 953 00d7 13          		.1byte	0xf3
+ 954 00d7 01          		.1byte	0x1
+ 955 00d8 00 00 00 00 		.4byte	0xbb
+ 956 00da 01          		.4byte	.LFB10
+ 957 00da F3          		.4byte	.LFE10
+ 958 00db 01          		.4byte	.LLST7
+ 959 00db 00 00 00 BB 		.4byte	0x206
+ 960 00dd 00 00 00 00 		.1byte	0xb
+ 961 00df 00 00 00 00 		.ascii "key\000"
+ 962 00e1 00 00 00 00 		.1byte	0x1
+ 963 00e3 00 00 02 06 		.1byte	0xf2
+ 964 00e5 0B          		.4byte	0x93
+ 965 00e6 6B 65 79 00 		.4byte	.LLST8
+ 966 00e8 01          		.1byte	0x14
+ 967 00e8 F2          		.4byte	.LASF17
+ 968 00e9 00 00 00 93 		.1byte	0x1
+ 969 00eb 00 00 00 00 		.1byte	0xf2
+ 970 00ed 14          		.4byte	0x9e
+ 971 00ed 00 00 00 00 		.4byte	.LLST9
+ 972 00ef 01          		.1byte	0x15
+ 973 00f0 F2          		.4byte	.LASF19
+ 974 00f0 00 00 00 9E 		.1byte	0x1
+ 975 00f2 00 00 00 00 		.1byte	0xf2
+ 976 00f4 15          		.4byte	0xc6
+ 977 00f5 00 00 00 00 		.1byte	0x2
+ 978 00f7 01          		.1byte	0x91
+ 979 00f7 F2          		.1byte	0x0
+ 980 00f8 00 00 00 C6 		.1byte	0x15
+ 981 00fa 02          		.4byte	.LASF20
+ 982 00fa 91          		.1byte	0x1
+ 983 00fb 00          		.1byte	0xf2
+ 984 00fb 15          		.4byte	0x9e
+ 985 00fc 00 00 00 00 		.1byte	0x2
+ 986 00fe 01          		.1byte	0x91
+ 987 00fe F2          		.1byte	0x1
+ 988 00ff 00 00 00 9E 		.1byte	0x0
+ 989 0101 02          		.1byte	0x13
+ 990 0101 91          		.1byte	0x1
+ 991 0102 01          		.4byte	.LASF23
+ 992 0102 00          		.1byte	0x1
+ 993 0103 13          		.1byte	0xe2
+ 994 0103 01          		.1byte	0x1
+ 995 0104 00 00 00 00 		.4byte	0xbb
+ 996 0106 01          		.4byte	.LFB9
+ 997 0106 E2          		.4byte	.LFE9
+ 998 0107 01          		.4byte	.LLST10
+ 999 0107 00 00 00 BB 		.4byte	0x250
+ 1000 0109 00 00 00 00 		.1byte	0xb
+ 1001 010b 00 00 00 00 		.ascii "key\000"
+ 1002 010d 00 00 00 00 		.1byte	0x1
+ 1003 010f 00 00 02 50 		.1byte	0xe1
+ 1004 0111 0B          		.4byte	0x93
+ 1005 0112 6B 65 79 00 		.4byte	.LLST11
+ 1006 0114 01          		.1byte	0x14
+ 1007 0114 E1          		.4byte	.LASF19
+ 1008 0115 00 00 00 93 		.1byte	0x1
+ 1009 0117 00 00 00 00 		.1byte	0xe1
+ 1010 0119 14          		.4byte	0xc6
+ 1011 0119 00 00 00 00 		.4byte	.LLST12
+ 1012 011b 01          		.1byte	0x15
+ 1013 011c E1          		.4byte	.LASF20
+ 1014 011c 00 00 00 C6 		.1byte	0x1
+ 1015 011e 00 00 00 00 		.1byte	0xe1
+ 1016 0120 15          		.4byte	0x9e
+ 1017 0121 00 00 00 00 		.1byte	0x2
+ 1018 0123 01          		.1byte	0x91
+ 1019 0123 E1          		.1byte	0x0
+ 1020 0124 00 00 00 9E 		.1byte	0x0
+ 1021 0126 02          		.1byte	0x13
+ 1022 0126 91          		.1byte	0x1
+ 1023 0127 00          		.4byte	.LASF24
+ 1024 0127 00          		.1byte	0x1
+ 1025 0128 13          		.1byte	0xce
+ 1026 0128 01          		.1byte	0x1
+ 1027 0129 00 00 00 00 		.4byte	0xbb
+ 1028 012b 01          		.4byte	.LFB8
+ 1029 012b CE          		.4byte	.LFE8
+ 1030 012c 01          		.4byte	.LLST13
+ 1031 012c 00 00 00 BB 		.4byte	0x29a
+ 1032 012e 00 00 00 00 		.1byte	0xb
+ 1033 0130 00 00 00 00 		.ascii "key\000"
+ 1034 0132 00 00 00 00 		.1byte	0x1
+ 1035 0134 00 00 02 9A 		.1byte	0xcd
+ 1036 0136 0B          		.4byte	0x93
+ 1037 0137 6B 65 79 00 		.4byte	.LLST14
+ 1038 0139 01          		.1byte	0x14
+ 1039 0139 CD          		.4byte	.LASF19
+ 1040 013a 00 00 00 93 		.1byte	0x1
+ 1041 013c 00 00 00 00 		.1byte	0xcd
+ 1042 013e 14          		.4byte	0xc6
+ 1043 013e 00 00 00 00 		.4byte	.LLST15
+ 1044 0140 01          		.1byte	0x15
+ 1045 0141 CD          		.4byte	.LASF20
+ 1046 0141 00 00 00 C6 		.1byte	0x1
+ 1047 0143 00 00 00 00 		.1byte	0xcd
+ 1048 0145 15          		.4byte	0x9e
+ 1049 0146 00 00 00 00 		.1byte	0x2
+ 1050 0148 01          		.1byte	0x91
+ 1051 0148 CD          		.1byte	0x0
+ 1052 0149 00 00 00 9E 		.1byte	0x0
+ 1053 014b 02          		.1byte	0x13
+ 1054 014b 91          		.1byte	0x1
+ 1055 014c 00          		.4byte	.LASF25
+ 1056 014c 00          		.1byte	0x1
+ 1057 014d 13          		.1byte	0xbd
+ 1058 014d 01          		.1byte	0x1
+ 1059 014e 00 00 00 00 		.4byte	0xbb
+ 1060 0150 01          		.4byte	.LFB7
+ 1061 0150 BD          		.4byte	.LFE7
+ 1062 0151 01          		.4byte	.LLST16
+ 1063 0151 00 00 00 BB 		.4byte	0x2f2
+ 1064 0153 00 00 00 00 		.1byte	0xb
+ 1065 0155 00 00 00 00 		.ascii "key\000"
+ 1066 0157 00 00 00 00 		.1byte	0x1
+ 1067 0159 00 00 02 F2 		.1byte	0xbc
+ 1068 015b 0B          		.4byte	0x93
+ 1069 015c 6B 65 79 00 		.4byte	.LLST17
+ 1070 015e 01          		.1byte	0x14
+ 1071 015e BC          		.4byte	.LASF17
+ 1072 015f 00 00 00 93 		.1byte	0x1
+ 1073 0161 00 00 00 00 		.1byte	0xbc
+ 1074 0163 14          		.4byte	0x9e
+ 1075 0163 00 00 00 00 		.4byte	.LLST18
+ 1076 0165 01          		.1byte	0x15
+ 1077 0166 BC          		.4byte	.LASF19
+ 1078 0166 00 00 00 9E 		.1byte	0x1
+ 1079 0168 00 00 00 00 		.1byte	0xbc
+ 1080 016a 15          		.4byte	0xc6
+ 1081 016b 00 00 00 00 		.1byte	0x2
+ 1082 016d 01          		.1byte	0x91
+ 1083 016d BC          		.1byte	0x0
+ 1084 016e 00 00 00 C6 		.1byte	0x15
+ 1085 0170 02          		.4byte	.LASF20
+ 1086 0170 91          		.1byte	0x1
+ 1087 0171 00          		.1byte	0xbc
+ 1088 0171 15          		.4byte	0x9e
+ 1089 0172 00 00 00 00 		.1byte	0x2
+ 1090 0174 01          		.1byte	0x91
+ 1091 0174 BC          		.1byte	0x1
+ 1092 0175 00 00 00 9E 		.1byte	0x0
+ 1093 0177 02          		.1byte	0x13
+ 1094 0177 91          		.1byte	0x1
+ 1095 0178 01          		.4byte	.LASF26
+ 1096 0178 00          		.1byte	0x1
+ 1097 0179 13          		.1byte	0xac
+ 1098 0179 01          		.1byte	0x1
+ 1099 017a 00 00 00 00 		.4byte	0xbb
+ 1100 017c 01          		.4byte	.LFB6
+ 1101 017c AC          		.4byte	.LFE6
+ 1102 017d 01          		.4byte	.LLST19
+ 1103 017d 00 00 00 BB 		.4byte	0x33c
+ 1104 017f 00 00 00 00 		.1byte	0xb
+ 1105 0181 00 00 00 00 		.ascii "key\000"
+ 1106 0183 00 00 00 00 		.1byte	0x1
+ 1107 0185 00 00 03 3C 		.1byte	0xab
+ 1108 0187 0B          		.4byte	0x93
+ 1109 0188 6B 65 79 00 		.4byte	.LLST20
+ 1110 018a 01          		.1byte	0x14
+ 1111 018a AB          		.4byte	.LASF19
+ 1112 018b 00 00 00 93 		.1byte	0x1
+ 1113 018d 00 00 00 00 		.1byte	0xab
+ 1114 018f 14          		.4byte	0xc6
+ 1115 018f 00 00 00 00 		.4byte	.LLST21
+ 1116 0191 01          		.1byte	0x15
+ 1117 0192 AB          		.4byte	.LASF20
+ 1118 0192 00 00 00 C6 		.1byte	0x1
+ 1119 0194 00 00 00 00 		.1byte	0xab
+ 1120 0196 15          		.4byte	0x9e
+ 1121 0197 00 00 00 00 		.1byte	0x2
+ 1122 0199 01          		.1byte	0x91
+ 1123 0199 AB          		.1byte	0x0
+ 1124 019a 00 00 00 9E 		.1byte	0x0
+ 1125 019c 02          		.1byte	0x13
+ 1126 019c 91          		.1byte	0x1
+ 1127 019d 00          		.4byte	.LASF27
+ 1128 019d 00          		.1byte	0x1
+ 1129 019e 13          		.1byte	0x7e
+ 1130 019e 01          		.1byte	0x1
+ 1131 019f 00 00 00 00 		.4byte	0xb0
+ 1132 01a1 01          		.4byte	.LFB4
+ 1133 01a1 7E          		.4byte	.LFE4
+ 1134 01a2 01          		.4byte	.LLST22
+ 1135 01a2 00 00 00 B0 		.4byte	0x378
+ 1136 01a4 00 00 00 00 		.1byte	0x16
+ 1137 01a6 00 00 00 00 		.4byte	.LASF29
+ 1138 01a8 00 00 00 00 		.1byte	0x1
+ 1139 01aa 00 00 03 78 		.1byte	0x7f
+ 1140 01ac 16          		.4byte	0xb0
+ 1141 01ad 00 00 00 00 		.4byte	.LLST23
+ 1142 01af 01          		.1byte	0x16
+ 1143 01af 7F          		.4byte	.LASF30
+ 1144 01b0 00 00 00 B0 		.1byte	0x1
+ 1145 01b2 00 00 00 00 		.1byte	0x80
+ 1146 01b4 16          		.4byte	0x9e
+ 1147 01b4 00 00 00 00 		.4byte	.LLST24
+ 1148 01b6 01          		.1byte	0x0
+ 1149 01b7 80          		.1byte	0xd
+ 1150 01b7 00 00 00 9E 		.1byte	0x1
+ 1151 01b9 00 00 00 00 		.4byte	.LASF32
+ 1152 01bb 00          		.1byte	0x1
+ 1153 01bc 0D          		.1byte	0x9c
+ 1154 01bc 01          		.1byte	0x1
+ 1155 01bd 00 00 00 00 		.4byte	0xc6
+ 1156 01bf 01          		.4byte	.LFB5
+ 1157 01bf 9C          		.4byte	.LFE5
+ 1158 01c0 01          		.1byte	0x1
+ 1159 01c0 00 00 00 C6 		.1byte	0x55
+ 1160 01c2 00 00 00 00 		.1byte	0x17
+ 1161 01c4 00 00 00 00 		.4byte	0xf1
+ 1162 01c6 01          		.4byte	0x39f
+ 1163 01c7 55          		.1byte	0x18
+ 1164 01c7 17          		.4byte	0x90
+ 1165 01c8 00 00 00 F1 		.1byte	0xe
+ 1166 01ca 00 00 03 9F 		.1byte	0x0
+ 1167 01cc 18          		.1byte	0xc
+ 1168 01cc 00 00 00 90 		.4byte	.LASF33
+ 1169 01ce 0E          		.1byte	0x1
+ 1170 01cf 00          		.1byte	0x28
+ 1171 01cf 0C          		.4byte	0x3b0
+ 1172 01d0 00 00 00 00 		.1byte	0x5
+ 1173 01d2 01          		.1byte	0x3
+ 1174 01d2 28          		.4byte	csr_mesh_pskey_offset_table
+ 1175 01d3 00 00 03 B0 		.1byte	0x19
+ 1176 01d5 05          		.4byte	0x38f
+ 1177 01d5 03          		.1byte	0x0
+ 1178 01d6 00 00 00 00 		.section	.debug_abbrev
+ 1179 01d8 19          		.1byte	0x1
+ 1180 01d8 00 00 03 8F 		.1byte	0x11
+ 1181 01da 00          		.1byte	0x1
+ 1182                 		.1byte	0x25
+ 1183 0000 01          		.1byte	0xe
+ 1184 0000 11          		.1byte	0x13
+ 1185 0001 01          		.1byte	0xb
+ 1186 0001 25          		.1byte	0x3
+ 1187 0002 0E          		.1byte	0xe
+ 1188 0002 13          		.1byte	0x1b
+ 1189 0003 0B          		.1byte	0xe
+ 1190 0003 03          		.1byte	0x11
+ 1191 0004 0E          		.1byte	0x1
+ 1192 0004 1B          		.1byte	0x52
+ 1193 0005 0E          		.1byte	0x1
+ 1194 0005 11          		.1byte	0x55
+ 1195 0006 01          		.1byte	0x6
+ 1196 0006 52          		.1byte	0x10
+ 1197 0007 01          		.1byte	0x6
+ 1198 0007 55          		.1byte	0x0
+ 1199 0008 06          		.1byte	0x0
+ 1200 0008 10          		.1byte	0x2
+ 1201 0009 06          		.1byte	0x24
+ 1202 0009 00          		.1byte	0x0
+ 1203 000a 00          		.1byte	0xb
+ 1204 000a 02          		.1byte	0xb
+ 1205 000b 24          		.1byte	0x3e
+ 1206 000b 00          		.1byte	0xb
+ 1207 000c 0B          		.1byte	0x3
+ 1208 000c 0B          		.1byte	0x8
+ 1209 000d 3E          		.1byte	0x0
+ 1210 000d 0B          		.1byte	0x0
+ 1211 000e 03          		.1byte	0x3
+ 1212 000e 08          		.1byte	0x24
+ 1213 000f 00          		.1byte	0x0
+ 1214 000f 00          		.1byte	0xb
+ 1215 0010 03          		.1byte	0xb
+ 1216 0010 24          		.1byte	0x3e
+ 1217 0011 00          		.1byte	0xb
+ 1218 0011 0B          		.1byte	0x3
+ 1219 0012 0B          		.1byte	0xe
+ 1220 0012 3E          		.1byte	0x0
+ 1221 0013 0B          		.1byte	0x0
+ 1222 0013 03          		.1byte	0x4
+ 1223 0014 0E          		.1byte	0x16
+ 1224 0014 00          		.1byte	0x0
+ 1225 0015 00          		.1byte	0x3
+ 1226 0015 04          		.1byte	0xe
+ 1227 0016 16          		.1byte	0x3a
+ 1228 0016 00          		.1byte	0xb
+ 1229 0017 03          		.1byte	0x3b
+ 1230 0017 0E          		.1byte	0xb
+ 1231 0018 3A          		.1byte	0x49
+ 1232 0018 0B          		.1byte	0x13
+ 1233 0019 3B          		.1byte	0x0
+ 1234 0019 0B          		.1byte	0x0
+ 1235 001a 49          		.1byte	0x5
+ 1236 001a 13          		.1byte	0x24
+ 1237 001b 00          		.1byte	0x0
+ 1238 001b 00          		.1byte	0xb
+ 1239 001c 05          		.1byte	0xb
+ 1240 001c 24          		.1byte	0x3e
+ 1241 001d 00          		.1byte	0xb
+ 1242 001d 0B          		.1byte	0x0
+ 1243 001e 0B          		.1byte	0x0
+ 1244 001e 3E          		.1byte	0x6
+ 1245 001f 0B          		.1byte	0xf
+ 1246 001f 00          		.1byte	0x0
+ 1247 0020 00          		.1byte	0xb
+ 1248 0020 06          		.1byte	0xb
+ 1249 0021 0F          		.1byte	0x49
+ 1250 0021 00          		.1byte	0x13
+ 1251 0022 0B          		.1byte	0x0
+ 1252 0022 0B          		.1byte	0x0
+ 1253 0023 49          		.1byte	0x7
+ 1254 0023 13          		.1byte	0x13
+ 1255 0024 00          		.1byte	0x1
+ 1256 0024 00          		.1byte	0xb
+ 1257 0025 07          		.1byte	0xb
+ 1258 0025 13          		.1byte	0x3a
+ 1259 0026 01          		.1byte	0xb
+ 1260 0026 0B          		.1byte	0x3b
+ 1261 0027 0B          		.1byte	0xb
+ 1262 0027 3A          		.1byte	0x1
+ 1263 0028 0B          		.1byte	0x13
+ 1264 0028 3B          		.1byte	0x0
+ 1265 0029 0B          		.1byte	0x0
+ 1266 0029 01          		.1byte	0x8
+ 1267 002a 13          		.1byte	0xd
+ 1268 002a 00          		.1byte	0x0
+ 1269 002b 00          		.1byte	0x3
+ 1270 002b 08          		.1byte	0x8
+ 1271 002c 0D          		.1byte	0x3a
+ 1272 002c 00          		.1byte	0xb
+ 1273 002d 03          		.1byte	0x3b
+ 1274 002d 08          		.1byte	0xb
+ 1275 002e 3A          		.1byte	0x49
+ 1276 002e 0B          		.1byte	0x13
+ 1277 002f 3B          		.1byte	0x38
+ 1278 002f 0B          		.1byte	0xa
+ 1279 0030 49          		.1byte	0x0
+ 1280 0030 13          		.1byte	0x0
+ 1281 0031 38          		.1byte	0x9
+ 1282 0031 0A          		.1byte	0xd
+ 1283 0032 00          		.1byte	0x0
+ 1284 0032 00          		.1byte	0x3
+ 1285 0033 09          		.1byte	0xe
+ 1286 0033 0D          		.1byte	0x3a
+ 1287 0034 00          		.1byte	0xb
+ 1288 0034 03          		.1byte	0x3b
+ 1289 0035 0E          		.1byte	0xb
+ 1290 0035 3A          		.1byte	0x49
+ 1291 0036 0B          		.1byte	0x13
+ 1292 0036 3B          		.1byte	0x38
+ 1293 0037 0B          		.1byte	0xa
+ 1294 0037 49          		.1byte	0x0
+ 1295 0038 13          		.1byte	0x0
+ 1296 0038 38          		.1byte	0xa
+ 1297 0039 0A          		.1byte	0x2e
+ 1298 0039 00          		.1byte	0x1
+ 1299 003a 00          		.1byte	0x3
+ 1300 003a 0A          		.1byte	0xe
+ 1301 003b 2E          		.1byte	0x3a
+ 1302 003b 01          		.1byte	0xb
+ 1303 003c 03          		.1byte	0x3b
+ 1304 003c 0E          		.1byte	0xb
+ 1305 003d 3A          		.1byte	0x27
+ 1306 003d 0B          		.1byte	0xc
+ 1307 003e 3B          		.1byte	0x49
+ 1308 003e 0B          		.1byte	0x13
+ 1309 003f 27          		.1byte	0x11
+ 1310 003f 0C          		.1byte	0x1
+ 1311 0040 49          		.1byte	0x12
+ 1312 0040 13          		.1byte	0x1
+ 1313 0041 11          		.1byte	0x40
+ 1314 0041 01          		.1byte	0x6
+ 1315 0042 12          		.1byte	0x1
+ 1316 0042 01          		.1byte	0x13
+ 1317 0043 40          		.1byte	0x0
+ 1318 0043 06          		.1byte	0x0
+ 1319 0044 01          		.1byte	0xb
+ 1320 0044 13          		.1byte	0x5
+ 1321 0045 00          		.1byte	0x0
+ 1322 0045 00          		.1byte	0x3
+ 1323 0046 0B          		.1byte	0x8
+ 1324 0046 05          		.1byte	0x3a
+ 1325 0047 00          		.1byte	0xb
+ 1326 0047 03          		.1byte	0x3b
+ 1327 0048 08          		.1byte	0xb
+ 1328 0048 3A          		.1byte	0x49
+ 1329 0049 0B          		.1byte	0x13
+ 1330 0049 3B          		.1byte	0x2
+ 1331 004a 0B          		.1byte	0x6
+ 1332 004a 49          		.1byte	0x0
+ 1333 004b 13          		.1byte	0x0
+ 1334 004b 02          		.1byte	0xc
+ 1335 004c 06          		.1byte	0x34
+ 1336 004c 00          		.1byte	0x0
+ 1337 004d 00          		.1byte	0x3
+ 1338 004d 0C          		.1byte	0xe
+ 1339 004e 34          		.1byte	0x3a
+ 1340 004e 00          		.1byte	0xb
+ 1341 004f 03          		.1byte	0x3b
+ 1342 004f 0E          		.1byte	0xb
+ 1343 0050 3A          		.1byte	0x49
+ 1344 0050 0B          		.1byte	0x13
+ 1345 0051 3B          		.1byte	0x2
+ 1346 0051 0B          		.1byte	0xa
+ 1347 0052 49          		.1byte	0x0
+ 1348 0052 13          		.1byte	0x0
+ 1349 0053 02          		.1byte	0xd
+ 1350 0053 0A          		.1byte	0x2e
+ 1351 0054 00          		.1byte	0x0
+ 1352 0054 00          		.1byte	0x3f
+ 1353 0055 0D          		.1byte	0xc
+ 1354 0055 2E          		.1byte	0x3
+ 1355 0056 00          		.1byte	0xe
+ 1356 0056 3F          		.1byte	0x3a
+ 1357 0057 0C          		.1byte	0xb
+ 1358 0057 03          		.1byte	0x3b
+ 1359 0058 0E          		.1byte	0xb
+ 1360 0058 3A          		.1byte	0x27
+ 1361 0059 0B          		.1byte	0xc
+ 1362 0059 3B          		.1byte	0x49
+ 1363 005a 0B          		.1byte	0x13
+ 1364 005a 27          		.1byte	0x11
+ 1365 005b 0C          		.1byte	0x1
+ 1366 005b 49          		.1byte	0x12
+ 1367 005c 13          		.1byte	0x1
+ 1368 005c 11          		.1byte	0x40
+ 1369 005d 01          		.1byte	0xa
+ 1370 005d 12          		.1byte	0x0
+ 1371 005e 01          		.1byte	0x0
+ 1372 005e 40          		.1byte	0xe
+ 1373 005f 0A          		.1byte	0x2e
+ 1374 005f 00          		.1byte	0x0
+ 1375 0060 00          		.1byte	0x3f
+ 1376 0060 0E          		.1byte	0xc
+ 1377 0061 2E          		.1byte	0x3
+ 1378 0061 00          		.1byte	0xe
+ 1379 0062 3F          		.1byte	0x3a
+ 1380 0062 0C          		.1byte	0xb
+ 1381 0063 03          		.1byte	0x3b
+ 1382 0063 0E          		.1byte	0x5
+ 1383 0064 3A          		.1byte	0x27
+ 1384 0064 0B          		.1byte	0xc
+ 1385 0065 3B          		.1byte	0x11
+ 1386 0065 05          		.1byte	0x1
+ 1387 0066 27          		.1byte	0x12
+ 1388 0066 0C          		.1byte	0x1
+ 1389 0067 11          		.1byte	0x40
+ 1390 0067 01          		.1byte	0xa
+ 1391 0068 12          		.1byte	0x0
+ 1392 0068 01          		.1byte	0x0
+ 1393 0069 40          		.1byte	0xf
+ 1394 0069 0A          		.1byte	0x2e
+ 1395 006a 00          		.1byte	0x1
+ 1396 006a 00          		.1byte	0x3f
+ 1397 006b 0F          		.1byte	0xc
+ 1398 006b 2E          		.1byte	0x3
+ 1399 006c 01          		.1byte	0xe
+ 1400 006c 3F          		.1byte	0x3a
+ 1401 006d 0C          		.1byte	0xb
+ 1402 006d 03          		.1byte	0x3b
+ 1403 006e 0E          		.1byte	0x5
+ 1404 006e 3A          		.1byte	0x27
+ 1405 006f 0B          		.1byte	0xc
+ 1406 006f 3B          		.1byte	0x49
+ 1407 0070 05          		.1byte	0x13
+ 1408 0070 27          		.1byte	0x11
+ 1409 0071 0C          		.1byte	0x1
+ 1410 0071 49          		.1byte	0x12
+ 1411 0072 13          		.1byte	0x1
+ 1412 0072 11          		.1byte	0x40
+ 1413 0073 01          		.1byte	0x6
+ 1414 0073 12          		.1byte	0x1
+ 1415 0074 01          		.1byte	0x13
+ 1416 0074 40          		.1byte	0x0
+ 1417 0075 06          		.1byte	0x0
+ 1418 0075 01          		.1byte	0x10
+ 1419 0076 13          		.1byte	0x5
+ 1420 0076 00          		.1byte	0x0
+ 1421 0077 00          		.1byte	0x3
+ 1422 0077 10          		.1byte	0x8
+ 1423 0078 05          		.1byte	0x3a
+ 1424 0078 00          		.1byte	0xb
+ 1425 0079 03          		.1byte	0x3b
+ 1426 0079 08          		.1byte	0x5
+ 1427 007a 3A          		.1byte	0x49
+ 1428 007a 0B          		.1byte	0x13
+ 1429 007b 3B          		.1byte	0x2
+ 1430 007b 05          		.1byte	0x6
+ 1431 007c 49          		.1byte	0x0
+ 1432 007c 13          		.1byte	0x0
+ 1433 007d 02          		.1byte	0x11
+ 1434 007d 06          		.1byte	0x5
+ 1435 007e 00          		.1byte	0x0
+ 1436 007e 00          		.1byte	0x3
+ 1437 007f 11          		.1byte	0xe
+ 1438 007f 05          		.1byte	0x3a
+ 1439 0080 00          		.1byte	0xb
+ 1440 0080 03          		.1byte	0x3b
+ 1441 0081 0E          		.1byte	0x5
+ 1442 0081 3A          		.1byte	0x49
+ 1443 0082 0B          		.1byte	0x13
+ 1444 0082 3B          		.1byte	0x2
+ 1445 0083 05          		.1byte	0x6
+ 1446 0083 49          		.1byte	0x0
+ 1447 0084 13          		.1byte	0x0
+ 1448 0084 02          		.1byte	0x12
+ 1449 0085 06          		.1byte	0x5
+ 1450 0085 00          		.1byte	0x0
+ 1451 0086 00          		.1byte	0x3
+ 1452 0086 12          		.1byte	0xe
+ 1453 0087 05          		.1byte	0x3a
+ 1454 0087 00          		.1byte	0xb
+ 1455 0088 03          		.1byte	0x3b
+ 1456 0088 0E          		.1byte	0x5
+ 1457 0089 3A          		.1byte	0x49
+ 1458 0089 0B          		.1byte	0x13
+ 1459 008a 3B          		.1byte	0x2
+ 1460 008a 05          		.1byte	0xa
+ 1461 008b 49          		.1byte	0x0
+ 1462 008b 13          		.1byte	0x0
+ 1463 008c 02          		.1byte	0x13
+ 1464 008c 0A          		.1byte	0x2e
+ 1465 008d 00          		.1byte	0x1
+ 1466 008d 00          		.1byte	0x3f
+ 1467 008e 13          		.1byte	0xc
+ 1468 008e 2E          		.1byte	0x3
+ 1469 008f 01          		.1byte	0xe
+ 1470 008f 3F          		.1byte	0x3a
+ 1471 0090 0C          		.1byte	0xb
+ 1472 0090 03          		.1byte	0x3b
+ 1473 0091 0E          		.1byte	0xb
+ 1474 0091 3A          		.1byte	0x27
+ 1475 0092 0B          		.1byte	0xc
+ 1476 0092 3B          		.1byte	0x49
+ 1477 0093 0B          		.1byte	0x13
+ 1478 0093 27          		.1byte	0x11
+ 1479 0094 0C          		.1byte	0x1
+ 1480 0094 49          		.1byte	0x12
+ 1481 0095 13          		.1byte	0x1
+ 1482 0095 11          		.1byte	0x40
+ 1483 0096 01          		.1byte	0x6
+ 1484 0096 12          		.1byte	0x1
+ 1485 0097 01          		.1byte	0x13
+ 1486 0097 40          		.1byte	0x0
+ 1487 0098 06          		.1byte	0x0
+ 1488 0098 01          		.1byte	0x14
+ 1489 0099 13          		.1byte	0x5
+ 1490 0099 00          		.1byte	0x0
+ 1491 009a 00          		.1byte	0x3
+ 1492 009a 14          		.1byte	0xe
+ 1493 009b 05          		.1byte	0x3a
+ 1494 009b 00          		.1byte	0xb
+ 1495 009c 03          		.1byte	0x3b
+ 1496 009c 0E          		.1byte	0xb
+ 1497 009d 3A          		.1byte	0x49
+ 1498 009d 0B          		.1byte	0x13
+ 1499 009e 3B          		.1byte	0x2
+ 1500 009e 0B          		.1byte	0x6
+ 1501 009f 49          		.1byte	0x0
+ 1502 009f 13          		.1byte	0x0
+ 1503 00a0 02          		.1byte	0x15
+ 1504 00a0 06          		.1byte	0x5
+ 1505 00a1 00          		.1byte	0x0
+ 1506 00a1 00          		.1byte	0x3
+ 1507 00a2 15          		.1byte	0xe
+ 1508 00a2 05          		.1byte	0x3a
+ 1509 00a3 00          		.1byte	0xb
+ 1510 00a3 03          		.1byte	0x3b
+ 1511 00a4 0E          		.1byte	0xb
+ 1512 00a4 3A          		.1byte	0x49
+ 1513 00a5 0B          		.1byte	0x13
+ 1514 00a5 3B          		.1byte	0x2
+ 1515 00a6 0B          		.1byte	0xa
+ 1516 00a6 49          		.1byte	0x0
+ 1517 00a7 13          		.1byte	0x0
+ 1518 00a7 02          		.1byte	0x16
+ 1519 00a8 0A          		.1byte	0x34
+ 1520 00a8 00          		.1byte	0x0
+ 1521 00a9 00          		.1byte	0x3
+ 1522 00a9 16          		.1byte	0xe
+ 1523 00aa 34          		.1byte	0x3a
+ 1524 00aa 00          		.1byte	0xb
+ 1525 00ab 03          		.1byte	0x3b
+ 1526 00ab 0E          		.1byte	0xb
+ 1527 00ac 3A          		.1byte	0x49
+ 1528 00ac 0B          		.1byte	0x13
+ 1529 00ad 3B          		.1byte	0x2
+ 1530 00ad 0B          		.1byte	0x6
+ 1531 00ae 49          		.1byte	0x0
+ 1532 00ae 13          		.1byte	0x0
+ 1533 00af 02          		.1byte	0x17
+ 1534 00af 06          		.1byte	0x1
+ 1535 00b0 00          		.1byte	0x1
+ 1536 00b0 00          		.1byte	0x49
+ 1537 00b1 17          		.1byte	0x13
+ 1538 00b1 01          		.1byte	0x1
+ 1539 00b2 01          		.1byte	0x13
+ 1540 00b2 49          		.1byte	0x0
+ 1541 00b3 13          		.1byte	0x0
+ 1542 00b3 01          		.1byte	0x18
+ 1543 00b4 13          		.1byte	0x21
+ 1544 00b4 00          		.1byte	0x0
+ 1545 00b5 00          		.1byte	0x49
+ 1546 00b5 18          		.1byte	0x13
+ 1547 00b6 21          		.1byte	0x2f
+ 1548 00b6 00          		.1byte	0xb
+ 1549 00b7 49          		.1byte	0x0
+ 1550 00b7 13          		.1byte	0x0
+ 1551 00b8 2F          		.1byte	0x19
+ 1552 00b8 0B          		.1byte	0x26
+ 1553 00b9 00          		.1byte	0x0
+ 1554 00b9 00          		.1byte	0x49
+ 1555 00ba 19          		.1byte	0x13
+ 1556 00ba 26          		.1byte	0x0
+ 1557 00bb 00          		.1byte	0x0
+ 1558 00bb 49          		.1byte	0x0
+ 1559 00bc 13          		.section	.debug_pubnames,"",@progbits
+ 1560 00bc 00          		.4byte	0xfc
+ 1561 00bd 00          		.2byte	0x2
+ 1562 00bd 00          		.4byte	.Ldebug_info0
+ 1563                 		.4byte	0x3b6
+ 1564 0000 00 00 00 FC 		.4byte	0x135
+ 1565 0002 00 02       		.ascii "CSRmeshPsInit\000"
+ 1566 0003 00 00 00 00 		.4byte	0x14c
+ 1567 0005 00 00 03 B6 		.ascii "CSRmeshPsDeInit\000"
+ 1568 0007 00 00 01 35 		.4byte	0x160
+ 1569 0009 43 53 52 6D 		.ascii "CSRmeshPsSecureWrite\000"
+ 1569      65 73 68 50 
+ 1569      73 49 6E 69 
+ 1569      74 00 
+ 1570 0010 00 00 01 4C 		.4byte	0x1ae
+ 1571 0012 43 53 52 6D 		.ascii "CSRmeshPsWriteWithOffset\000"
+ 1571      65 73 68 50 
+ 1571      73 44 65 49 
+ 1571      6E 69 74 00 
+ 1572 001a 00 00 01 60 		.4byte	0x206
+ 1573 001c 43 53 52 6D 		.ascii "CSRmeshPsWrite\000"
+ 1573      65 73 68 50 
+ 1573      73 53 65 63 
+ 1573      75 72 65 57 
+ 1573      72 69 74 65 
+ 1574 0026 00 00 01 AE 		.4byte	0x250
+ 1575 0028 43 53 52 6D 		.ascii "CSRmeshPsSecureRead\000"
+ 1575      65 73 68 50 
+ 1575      73 57 72 69 
+ 1575      74 65 57 69 
+ 1575      74 68 4F 66 
+ 1576 0035 00 00 02 06 		.4byte	0x29a
+ 1577 0037 43 53 52 6D 		.ascii "CSRmeshPsReadWithOffset\000"
+ 1577      65 73 68 50 
+ 1577      73 57 72 69 
+ 1577      74 65 00 
+ 1578 003e 00 00 02 50 		.4byte	0x2f2
+ 1579 0040 43 53 52 6D 		.ascii "CSRmeshPsRead\000"
+ 1579      65 73 68 50 
+ 1579      73 53 65 63 
+ 1579      75 72 65 52 
+ 1579      65 61 64 00 
+ 1580 004a 00 00 02 9A 		.4byte	0x33c
+ 1581 004c 43 53 52 6D 		.ascii "CSRmeshIsPsReadyForAccess\000"
+ 1581      65 73 68 50 
+ 1581      73 52 65 61 
+ 1581      64 57 69 74 
+ 1581      68 4F 66 66 
+ 1582 0058 00 00 02 F2 		.4byte	0x378
+ 1583 005a 43 53 52 6D 		.ascii "CSRmeshPsReadSecureKey\000"
+ 1583      65 73 68 50 
+ 1583      73 52 65 61 
+ 1583      64 00 
+ 1584 0061 00 00 03 3C 		.4byte	0x0
+ 1585 0063 43 53 52 6D 		.section	.debug_aranges,"",@progbits
+ 1585      65 73 68 49 
+ 1585      73 50 73 52 
+ 1585      65 61 64 79 
+ 1585      46 6F 72 41 
+ 1586 0070 00 00 03 78 		.4byte	0x6c
+ 1587 0072 43 53 52 6D 		.2byte	0x2
+ 1587      65 73 68 50 
+ 1587      73 52 65 61 
+ 1587      64 53 65 63 
+ 1587      75 72 65 4B 
+ 1588 007e 00 00 00 00 		.4byte	.Ldebug_info0
+ 1589                 		.1byte	0x4
+ 1590 0000 00 00 00 6C 		.1byte	0x0
+ 1591 0002 00 02       		.2byte	0x0
+ 1592 0003 00 00 00 00 		.2byte	0x0
+ 1593 0005 04          		.4byte	.LFB2
+ 1594 0005 00          		.4byte	.LFE2-.LFB2
+ 1595 0006 00 00       		.4byte	.LFB3
+ 1596 0007 00 00       		.4byte	.LFE3-.LFB3
+ 1597 0008 00 00 00 00 		.4byte	.LFB12
+ 1598 000a 00 00 00 00 		.4byte	.LFE12-.LFB12
+ 1599 000c 00 00 00 00 		.4byte	.LFB11
+ 1600 000e 00 00 00 02 		.4byte	.LFE11-.LFB11
+ 1601 0010 00 00 00 00 		.4byte	.LFB10
+ 1602 0012 00 00 00 01 		.4byte	.LFE10-.LFB10
+ 1603 0014 00 00 00 00 		.4byte	.LFB9
+ 1604 0016 00 00 00 00 		.4byte	.LFE9-.LFB9
+ 1605 0018 00 00 00 00 		.4byte	.LFB8
+ 1606 001a 00 00 00 00 		.4byte	.LFE8-.LFB8
+ 1607 001c 00 00 00 00 		.4byte	.LFB7
+ 1608 001e 00 00 00 00 		.4byte	.LFE7-.LFB7
+ 1609 0020 00 00 00 00 		.4byte	.LFB6
+ 1610 0022 00 00 00 00 		.4byte	.LFE6-.LFB6
+ 1611 0024 00 00 00 00 		.4byte	.LFB4
+ 1612 0026 00 00 00 00 		.4byte	.LFE4-.LFB4
+ 1613 0028 00 00 00 00 		.4byte	.LFB5
+ 1614 002a 00 00 00 00 		.4byte	.LFE5-.LFB5
+ 1615 002c 00 00 00 00 		.4byte	0x0
+ 1616 002e 00 00 00 00 		.4byte	0x0
+ 1617 0030 00 00 00 00 		.section	.debug_ranges,"",@progbits
+ 1618 0032 00 00 00 00 	.Ldebug_ranges0:
+ 1619 0034 00 00 00 00 		.4byte	.Ltext0
+ 1620 0036 00 00 00 00 		.4byte	.Letext0
+ 1621                 		.4byte	.LFB2
+ 1622                 		.4byte	.LFE2
+ 1623 0000 00 00 00 00 		.4byte	.LFB3
+ 1624 0002 00 00 00 00 		.4byte	.LFE3
+ 1625 0004 00 00 00 00 		.4byte	.LFB12
+ 1626 0006 00 00 00 00 		.4byte	.LFE12
+ 1627 0008 00 00 00 00 		.4byte	.LFB11
+ 1628 000a 00 00 00 00 		.4byte	.LFE11
+ 1629 000c 00 00 00 00 		.4byte	.LFB10
+ 1630 000e 00 00 00 00 		.4byte	.LFE10
+ 1631 0010 00 00 00 00 		.4byte	.LFB9
+ 1632 0012 00 00 00 00 		.4byte	.LFE9
+ 1633 0014 00 00 00 00 		.4byte	.LFB8
+ 1634 0016 00 00 00 00 		.4byte	.LFE8
+ 1635 0018 00 00 00 00 		.4byte	.LFB7
+ 1636 001a 00 00 00 00 		.4byte	.LFE7
+ 1637 001c 00 00 00 00 		.4byte	.LFB6
+ 1638 001e 00 00 00 00 		.4byte	.LFE6
+ 1639 0020 00 00 00 00 		.4byte	.LFB4
+ 1640 0022 00 00 00 00 		.4byte	.LFE4
+ 1641 0024 00 00 00 00 		.4byte	.LFB5
+ 1642 0026 00 00 00 00 		.4byte	.LFE5
+ 1643 0028 00 00 00 00 		.4byte	0x0
+ 1644 002a 00 00 00 00 		.4byte	0x0
+ 1645 002c 00 00 00 00 		.section	.debug_str,"MS",@progbits,1
+ 1646 002e 00 00 00 00 	.LASF17:
+ 1647 0030 00 00 00 00 		.ascii "offset\000"
+ 1648 0032 00 00 00 00 	.LASF36:
+ 1649                 		.ascii "C:\\Users\\Administrator\\Desktop\\CSR\\csrmesh_2.1v_node_applications_A05\\CSRmesh_2_1_v_
+ 1650                 	.LASF28:
+ 1651 0000 6F 66 66 73 		.ascii "count\000"
+ 1651      65 74 00 
+ 1652                 	.LASF24:
+ 1653 0003 43 3A 5C 55 		.ascii "CSRmeshPsSecureRead\000"
+ 1653      73 65 72 73 
+ 1653      5C 41 64 6D 
+ 1653      69 6E 69 73 
+ 1653      74 72 61 74 
+ 1654                 	.LASF11:
+ 1655 003e 63 6F 75 6E 		.ascii "bool\000"
+ 1655      74 00 
+ 1656                 	.LASF34:
+ 1657 0041 43 53 52 6D 		.ascii "GNU C 4.3.4 CSR version 31 for xap [2855778]\000"
+ 1657      65 73 68 50 
+ 1657      73 53 65 63 
+ 1657      75 72 65 52 
+ 1657      65 61 64 00 
+ 1658                 	.LASF31:
+ 1659 004b 62 6F 6F 6C 		.ascii "CSRmeshPsInit\000"
+ 1659      00 
+ 1660                 	.LASF15:
+ 1661 004e 47 4E 55 20 		.ascii "CsrBool\000"
+ 1661      43 20 34 2E 
+ 1661      33 2E 34 20 
+ 1661      43 53 52 20 
+ 1661      76 65 72 73 
+ 1662                 	.LASF18:
+ 1663 0064 43 53 52 6D 		.ascii "CSR_MESH_PSKEY_OFFSET_T\000"
+ 1663      65 73 68 50 
+ 1663      73 49 6E 69 
+ 1663      74 00 
+ 1664                 	.LASF6:
+ 1665 006b 43 73 72 42 		.ascii "long long unsigned int\000"
+ 1665      6F 6F 6C 00 
+ 1666                 	.LASF16:
+ 1667 006f 43 53 52 5F 		.ascii "CSRmeshResult\000"
+ 1667      4D 45 53 48 
+ 1667      5F 50 53 4B 
+ 1667      45 59 5F 4F 
+ 1667      46 46 53 45 
+ 1668                 	.LASF7:
+ 1669 007b 6C 6F 6E 67 		.ascii "unsigned char\000"
+ 1669      20 6C 6F 6E 
+ 1669      67 20 75 6E 
+ 1669      73 69 67 6E 
+ 1669      65 64 20 69 
+ 1670                 	.LASF25:
+ 1671 0087 43 53 52 6D 		.ascii "CSRmeshPsReadWithOffset\000"
+ 1671      65 73 68 52 
+ 1671      65 73 75 6C 
+ 1671      74 00 
+ 1672                 	.LASF4:
+ 1673 008e 75 6E 73 69 		.ascii "long unsigned int\000"
+ 1673      67 6E 65 64 
+ 1673      20 63 68 61 
+ 1673      72 00 
+ 1674                 	.LASF8:
+ 1675 0095 43 53 52 6D 		.ascii "uint8\000"
+ 1675      65 73 68 50 
+ 1675      73 52 65 61 
+ 1675      64 57 69 74 
+ 1675      68 4F 66 66 
+ 1676                 	.LASF38:
+ 1677 00a1 6C 6F 6E 67 		.ascii "CSRmeshPsDeInit\000"
+ 1677      20 75 6E 73 
+ 1677      69 67 6E 65 
+ 1677      64 20 69 6E 
+ 1677      74 00 
+ 1678                 	.LASF13:
+ 1679 00aa 75 69 6E 74 		.ascii "CsrUint16\000"
+ 1679      38 00 
+ 1680                 	.LASF9:
+ 1681 00ad 43 53 52 6D 		.ascii "uint16\000"
+ 1681      65 73 68 50 
+ 1681      73 44 65 49 
+ 1681      6E 69 74 00 
+ 1682                 	.LASF35:
+ 1683 00b5 43 73 72 55 		.ascii "../mesh_common/mesh/drivers/csr_mesh_ps_ifce.c\000"
+ 1683      69 6E 74 31 
+ 1683      36 00 
+ 1684                 	.LASF33:
+ 1685 00ba 75 69 6E 74 		.ascii "csr_mesh_pskey_offset_table\000"
+ 1685      31 36 00 
+ 1686                 	.LASF30:
+ 1687 00bd 2E 2E 2F 6D 		.ascii "csrmesh_nvm_sanity\000"
+ 1687      65 73 68 5F 
+ 1687      63 6F 6D 6D 
+ 1687      6F 6E 2F 6D 
+ 1687      65 73 68 2F 
+ 1688                 	.LASF0:
+ 1689 00d5 63 73 72 5F 		.ascii "unsigned int\000"
+ 1689      6D 65 73 68 
+ 1689      5F 70 73 6B 
+ 1689      65 79 5F 6F 
+ 1689      66 66 73 65 
+ 1690                 	.LASF14:
+ 1691 00e3 63 73 72 6D 		.ascii "char\000"
+ 1691      65 73 68 5F 
+ 1691      6E 76 6D 5F 
+ 1691      73 61 6E 69 
+ 1691      74 79 00 
+ 1692                 	.LASF21:
+ 1693 00ec 75 6E 73 69 		.ascii "CSRmeshPsSecureWrite\000"
+ 1693      67 6E 65 64 
+ 1693      20 69 6E 74 
+ 1693      00 
+ 1694                 	.LASF37:
+ 1695 00f3 63 68 61 72 		.ascii "getPsKeyOffset\000"
+ 1695      00 
+ 1696                 	.LASF29:
+ 1697 00f5 43 53 52 6D 		.ascii "result\000"
+ 1697      65 73 68 50 
+ 1697      73 53 65 63 
+ 1697      75 72 65 57 
+ 1697      72 69 74 65 
+ 1698                 	.LASF26:
+ 1699 0100 67 65 74 50 		.ascii "CSRmeshPsRead\000"
+ 1699      73 4B 65 79 
+ 1699      4F 66 66 73 
+ 1699      65 74 00 
+ 1700                 	.LASF27:
+ 1701 0107 72 65 73 75 		.ascii "CSRmeshIsPsReadyForAccess\000"
+ 1701      6C 74 00 
+ 1702                 	.LASF5:
+ 1703 010b 43 53 52 6D 		.ascii "long long int\000"
+ 1703      65 73 68 50 
+ 1703      73 52 65 61 
+ 1703      64 00 
+ 1704                 	.LASF22:
+ 1705 0112 43 53 52 6D 		.ascii "CSRmeshPsWriteWithOffset\000"
+ 1705      65 73 68 49 
+ 1705      73 50 73 52 
+ 1705      65 61 64 79 
+ 1705      46 6F 72 41 
+ 1706                 	.LASF19:
+ 1707 011f 6C 6F 6E 67 		.ascii "valueBuffer\000"
+ 1707      20 6C 6F 6E 
+ 1707      67 20 69 6E 
+ 1707      74 00 
+ 1708                 	.LASF32:
+ 1709 0126 43 53 52 6D 		.ascii "CSRmeshPsReadSecureKey\000"
+ 1709      65 73 68 50 
+ 1709      73 57 72 69 
+ 1709      74 65 57 69 
+ 1709      74 68 4F 66 
+ 1710                 	.LASF1:
+ 1711 0132 76 61 6C 75 		.ascii "short int\000"
+ 1711      65 42 75 66 
+ 1711      66 65 72 00 
+ 1712                 	.LASF12:
+ 1713 0138 43 53 52 6D 		.ascii "CsrUint8\000"
+ 1713      65 73 68 50 
+ 1713      73 52 65 61 
+ 1713      64 53 65 63 
+ 1713      75 72 65 4B 
+ 1714                 	.LASF3:
+ 1715 0144 73 68 6F 72 		.ascii "long int\000"
+ 1715      74 20 69 6E 
+ 1715      74 00 
+ 1716                 	.LASF23:
+ 1717 0149 43 73 72 55 		.ascii "CSRmeshPsWrite\000"
+ 1717      69 6E 74 38 
+ 1717      00 
+ 1718                 	.LASF10:
+ 1719 014d 6C 6F 6E 67 		.ascii "signed char\000"
+ 1719      20 69 6E 74 
+ 1719      00 
+ 1720                 	.LASF2:
+ 1721 0152 43 53 52 6D 		.ascii "short unsigned int\000"
+ 1721      65 73 68 50 
+ 1721      73 57 72 69 
+ 1721      74 65 00 
+ 1722                 	.LASF20:
+ 1723 0159 73 69 67 6E 		.ascii "length\000"
+ 1723      65 64 20 63 
+ 1723      68 61 72 00 
+ 1724                 		.ident	"GCC: (GNU) 4.3.4 CSR version 31 for xap [2855778]"
+ 1725 015f 73 68 6F 72 	...
+ 1725      74 20 75 6E 
+ 1725      73 69 67 6E 
+ 1725      65 64 20 69 
+ 1725      6E 74 00 

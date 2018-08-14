@@ -1,0 +1,42 @@
+# 1 "csr_mesh_light_csr102x.htfp"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "csr_mesh_light_csr102x.htfp"
+
+subsystem=ble
+device=smem
+store=0x000f
+
+
+
+app_store_id =
+
+
+
+bdaddr = {0x8341, 0x5b00, 0x02}
+
+
+sleep_mode = sleep_mode_deep
+# 60 "csr_mesh_light_csr102x.htfp"
+user_key1 = {0x0003, 0x0100, 0x0302, 0x0504, 0x0706, 0x908, 0x0B0A, 0x0D0C, 0x0F0E, 0x0100, 0x0302, 0x0504, 0x0706}
+
+
+pools_config = {0x00DF, 0x0349, 0x0153}
+
+
+subsystem=ble
+device=mtp
+store=0x0010
+
+
+
+
+app_store_shadow_id = {0xffff,0xffff,0xffff,0xffff,0xffff,0xffff}
+
+
+
+app_store_id = {0x0001,0x0001,0x0001}
+
+
+
+record_store_info = {0xF8000001, 0x0800}

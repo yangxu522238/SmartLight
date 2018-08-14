@@ -1,0 +1,15 @@
+# Store Configuration File
+#
+# Configuration for stores in flash memory
+#
+# App store 1 (0x8010), 24KByte, cache enabled, contains the project built by the SDK
+# App store 2      (1), 24KByte, cache enabled, empty
+#
+#   COMMENT, MEMORY, TYPE, ID, STORE_SIZE, CACHED, CONTENT,
+App store 1,  FLASH,  APP,  1,      106496,    Yes, <Project>,
+App store 2,  FLASH,  APP,  2,      106496,    Yes, <Null>,
+Config Store, FLASH,  CONF, 15,     8192,     No,
+Config Store, MTP,    CONF, 16,     52,       No,
+
+# Enable User Store for OTAu update.This should be only enabled for tetsing with 16Mbit devices
+#User Store 1, FLASH, USER, 3, 106496 , No, <Null>

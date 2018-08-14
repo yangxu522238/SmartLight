@@ -1,0 +1,15 @@
+-nostdlib
+-L.
+-L..\mesh_common\mesh\libraries\CSR102x_A05
+-LD:/CSR102x_SDK-3.1.1/tools/lib/CSR102x_A05
+-gdwarf-2
+-g
+-mconst-switch-tables
+-mas-mode
+-mno-initc
+-Wl,--defsym=PROG_APPCODE_START=PROG_FLEXI_START
+-Wl,--defsym=APP_SIGNATURE_SIZE=0
+-Wl,--defsym=DRAM_APPDATA_MODEL=1
+-Wl,--defsym=STORE_OFFSET=0x0
+-Wl,--just-symbols=D:/CSR102x_SDK-3.1.1/tools/lib/CSR102x_A05/rom_img.elf,-T,xap_application.ld,--gc-sections
+-lgcc

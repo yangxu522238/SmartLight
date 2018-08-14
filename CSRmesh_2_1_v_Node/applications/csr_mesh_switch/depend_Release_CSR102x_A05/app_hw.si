@@ -1,0 +1,2746 @@
+   1                 		.file	"app_hw.c"
+   2                 		.variant xap2+
+   3                 	
+   4                 		.large
+   5                 	
+   6                 		.section	.debug_abbrev,"",@progbits
+   7                 	.Ldebug_abbrev0:
+   8                 		.section	.debug_info,"",@progbits
+   9                 	.Ldebug_info0:
+  10                 		.section	.debug_line,"",@progbits
+  11                 	.Ldebug_line0:
+  12 0000 00 00 00 00 		.text
+  12      00 02 00 00 
+  12      00 00 01 01 
+  12      FB 0E 0D 00 
+  12      01 01 01 01 
+  13                 	.Ltext0:
+  14                 		.section	.text.WriteSwitchDataOntoNVM,"ax",@progbits
+  15                 		.global	WriteSwitchDataOntoNVM
+  16                 		.type	WriteSwitchDataOntoNVM, @function
+  17                 	WriteSwitchDataOntoNVM:
+  18                 	.LFB6:
+  19                 		.file 1 "app_hw.c"
+   0:app_hw.c      **** /******************************************************************************
+   1:app_hw.c      ****  *  Copyright 2015 - 2016 Qualcomm Technologies International, Ltd.
+   2:app_hw.c      ****  *  Bluetooth Low Energy CSRmesh 2.1
+   3:app_hw.c      ****  *  Application version 2.1.0
+   4:app_hw.c      ****  *
+   5:app_hw.c      ****  *  FILE
+   6:app_hw.c      ****  *      app_hw.c
+   7:app_hw.c      ****  *
+   8:app_hw.c      ****  *  DESCRIPTION
+   9:app_hw.c      ****  *      This file implements the CSRmesh switch hardware specific functions.
+  10:app_hw.c      ****  *
+  11:app_hw.c      ****  *  NOTE
+  12:app_hw.c      ****  *      Default hardware is always IOT board.
+  13:app_hw.c      ****  *
+  14:app_hw.c      ****  *****************************************************************************/
+  15:app_hw.c      **** 
+  16:app_hw.c      **** /*============================================================================*
+  17:app_hw.c      ****  *  SDK Header Files
+  18:app_hw.c      ****  *============================================================================*/
+  19:app_hw.c      **** #include <types.h>
+  20:app_hw.c      **** #include <pio.h>
+  21:app_hw.c      **** #ifndef CSR101x_A05
+  22:app_hw.c      **** #include <mw_pio.h>
+  23:app_hw.c      **** #endif
+  24:app_hw.c      **** #include <timer.h>
+  25:app_hw.c      **** /*============================================================================*
+  26:app_hw.c      ****  *  Local Header Files
+  27:app_hw.c      ****  *============================================================================*/
+  28:app_hw.c      **** #include "user_config.h"
+  29:app_hw.c      **** #include "iot_hw.h"
+  30:app_hw.c      **** #include "app_hw.h"
+  31:app_hw.c      **** #include "nvm_access.h"
+  32:app_hw.c      **** #include "core_mesh_handler.h"
+  33:app_hw.c      **** #include "app_mesh_handler.h"
+  34:app_hw.c      **** 
+  35:app_hw.c      **** /*============================================================================*
+  36:app_hw.c      ****  *  Private Definitions
+  37:app_hw.c      ****  *============================================================================*/
+  38:app_hw.c      **** #ifndef DEBUG_ENABLE
+  39:app_hw.c      **** 
+  40:app_hw.c      **** /* Time for which the button bounce is expected */
+  41:app_hw.c      **** #define BUTTON_DEBOUNCE_TIME           (20 * MILLISECOND)
+  42:app_hw.c      **** 
+  43:app_hw.c      **** /* Timer to check if button was pressed for 1 second */
+  44:app_hw.c      **** #define BUTTON_ONE_SEC_PRESS_TIME      (1 * SECOND)
+  45:app_hw.c      **** 
+  46:app_hw.c      **** #define KEY_PRESSED  (TRUE)
+  47:app_hw.c      **** 
+  48:app_hw.c      **** #define KEY_RELEASED (FALSE)
+  49:app_hw.c      **** 
+  50:app_hw.c      **** /* Light Level Increment/Decrement Step Size */
+  51:app_hw.c      **** #define LEVEL_STEP_SIZE               (4)
+  52:app_hw.c      **** 
+  53:app_hw.c      **** /* Maximum and Minimum light levels */
+  54:app_hw.c      **** #define MAX_LEVEL                     (255)
+  55:app_hw.c      **** #define MIN_LEVEL                     (0)
+  56:app_hw.c      **** 
+  57:app_hw.c      **** /*============================================================================*
+  58:app_hw.c      ****  *  Private Data
+  59:app_hw.c      ****  *============================================================================*/
+  60:app_hw.c      **** /* Switch Button States. */
+  61:app_hw.c      **** static bool     onButtonState  = KEY_RELEASED;
+  62:app_hw.c      **** static bool     incButtonState = KEY_RELEASED;
+  63:app_hw.c      **** static bool     decButtonState = KEY_RELEASED;
+  64:app_hw.c      **** static timer_id oneSecTimerId  = TIMER_INVALID;
+  65:app_hw.c      **** 
+  66:app_hw.c      **** static uint8    switch_cmd_tid = 1;
+  67:app_hw.c      **** 
+  68:app_hw.c      **** /* Toggle switch de-bounce timer id */
+  69:app_hw.c      **** timer_id        debounce_tid;
+  70:app_hw.c      **** 
+  71:app_hw.c      **** static uint8    brightness_level;
+  72:app_hw.c      **** 
+  73:app_hw.c      **** #ifndef CSR101x_A05
+  74:app_hw.c      **** static pio_mask_t sw3_mask, sw2_mask, sw4_mask;
+  75:app_hw.c      **** #endif
+  76:app_hw.c      **** 
+  77:app_hw.c      **** /*============================================================================*
+  78:app_hw.c      ****  *  Private Function Implementations
+  79:app_hw.c      ****  *============================================================================*/
+  80:app_hw.c      **** /*----------------------------------------------------------------------------*
+  81:app_hw.c      ****  *  NAME
+  82:app_hw.c      ****  *      handleButtonDebounce
+  83:app_hw.c      ****  *
+  84:app_hw.c      ****  *  DESCRIPTION
+  85:app_hw.c      ****  *      This function handles De-bounce Timer Events.
+  86:app_hw.c      ****  *
+  87:app_hw.c      ****  *  RETURNS
+  88:app_hw.c      ****  *      Nothing.
+  89:app_hw.c      ****  *
+  90:app_hw.c      ****  *---------------------------------------------------------------------------*/
+  91:app_hw.c      **** static void handleButtonDebounce(timer_id tid)
+  92:app_hw.c      **** {
+  93:app_hw.c      ****     bool startOneSecTimer = FALSE;
+  94:app_hw.c      ****     bool update_nvm = FALSE;
+  95:app_hw.c      ****     CSRMESH_POWER_SET_STATE_T power_state;
+  96:app_hw.c      ****     CSRMESH_LIGHT_SET_LEVEL_T light_level;
+  97:app_hw.c      **** 
+  98:app_hw.c      ****     if( tid == debounce_tid)
+  99:app_hw.c      ****     {
+ 100:app_hw.c      ****         debounce_tid = TIMER_INVALID;
+ 101:app_hw.c      **** 
+ 102:app_hw.c      **** #ifdef CSR101x_A05
+ 103:app_hw.c      ****         /* Enable PIO Events again */
+ 104:app_hw.c      ****         PioSetEventMask(BUTTONS_BIT_MASK, pio_event_mode_both);
+ 105:app_hw.c      **** #else
+ 106:app_hw.c      ****         PioSetEventMultiple(sw3_mask,
+ 107:app_hw.c      ****                             pio_event_mode_both | pio_event_mode_wake_both);
+ 108:app_hw.c      ****         PioSetEventMultiple(sw2_mask, 
+ 109:app_hw.c      ****                             pio_event_mode_both | pio_event_mode_wake_both);
+ 110:app_hw.c      ****         PioSetEventMultiple(sw4_mask, 
+ 111:app_hw.c      ****                             pio_event_mode_both | pio_event_mode_wake_both);
+ 112:app_hw.c      **** #endif
+ 113:app_hw.c      **** 
+ 114:app_hw.c      ****         /* If PIO State is same as before starting de-bounce timer,
+ 115:app_hw.c      ****          * we have a valid event.
+ 116:app_hw.c      ****          */
+ 117:app_hw.c      ****         if ((PioGet(SW3_PIO) == FALSE) && (incButtonState == KEY_RELEASED))
+ 118:app_hw.c      ****         {
+ 119:app_hw.c      ****             /* Set State and increment level */
+ 120:app_hw.c      ****             incButtonState = KEY_PRESSED;
+ 121:app_hw.c      ****             if (brightness_level < (MAX_LEVEL - LEVEL_STEP_SIZE))
+ 122:app_hw.c      ****             {
+ 123:app_hw.c      ****                 brightness_level += LEVEL_STEP_SIZE;
+ 124:app_hw.c      ****             }
+ 125:app_hw.c      ****             else
+ 126:app_hw.c      ****             {
+ 127:app_hw.c      ****                 brightness_level = MAX_LEVEL;
+ 128:app_hw.c      ****             }
+ 129:app_hw.c      **** 
+ 130:app_hw.c      ****             /* Start 1 second timer */
+ 131:app_hw.c      ****             startOneSecTimer = TRUE;
+ 132:app_hw.c      ****         }
+ 133:app_hw.c      ****         else if ((PioGet(SW3_PIO) == TRUE) && (incButtonState == KEY_PRESSED))
+ 134:app_hw.c      ****         {
+ 135:app_hw.c      ****             /* Set state to KEY RELEASE */
+ 136:app_hw.c      ****             incButtonState = KEY_RELEASED;
+ 137:app_hw.c      ****             update_nvm = TRUE;
+ 138:app_hw.c      ****         }
+ 139:app_hw.c      **** 
+ 140:app_hw.c      ****         if ((PioGet(SW2_PIO) == FALSE) && (decButtonState == KEY_RELEASED))
+ 141:app_hw.c      ****         {
+ 142:app_hw.c      ****             /* Set State and decrement level */
+ 143:app_hw.c      ****             decButtonState = KEY_PRESSED;
+ 144:app_hw.c      ****             if (brightness_level > LEVEL_STEP_SIZE)
+ 145:app_hw.c      ****             {
+ 146:app_hw.c      ****                 brightness_level -= LEVEL_STEP_SIZE;
+ 147:app_hw.c      ****             }
+ 148:app_hw.c      ****             else
+ 149:app_hw.c      ****             {
+ 150:app_hw.c      ****                 brightness_level = MIN_LEVEL;
+ 151:app_hw.c      ****             }
+ 152:app_hw.c      **** 
+ 153:app_hw.c      ****             /* Start 1 second timer */
+ 154:app_hw.c      ****             startOneSecTimer = TRUE;
+ 155:app_hw.c      ****         }
+ 156:app_hw.c      ****         else if ((PioGet(SW2_PIO) == TRUE) && (decButtonState == KEY_PRESSED))
+ 157:app_hw.c      ****         {
+ 158:app_hw.c      ****             /* Set state to KEY RELEASE */
+ 159:app_hw.c      ****             decButtonState = KEY_RELEASED;
+ 160:app_hw.c      ****             update_nvm = TRUE;
+ 161:app_hw.c      ****         }
+ 162:app_hw.c      **** 
+ 163:app_hw.c      ****         if ((PioGet(SW4_PIO) == FALSE) && (onButtonState == KEY_RELEASED))
+ 164:app_hw.c      ****         {
+ 165:app_hw.c      ****             /* Set Button State */
+ 166:app_hw.c      ****             onButtonState = KEY_PRESSED;
+ 167:app_hw.c      ****             power_state.state = csr_mesh_power_state_on;
+ 168:app_hw.c      ****             power_state.tid = switch_cmd_tid++;
+ 169:app_hw.c      ****             AppPowerSetState(&power_state, FALSE);
+ 170:app_hw.c      ****         }
+ 171:app_hw.c      ****         else if ((PioGet(SW4_PIO) == TRUE) && (onButtonState == KEY_PRESSED))
+ 172:app_hw.c      ****         {
+ 173:app_hw.c      ****             /* Set state to KEY RELEASE */
+ 174:app_hw.c      ****             onButtonState = KEY_RELEASED;
+ 175:app_hw.c      ****             power_state.state = csr_mesh_power_state_off;
+ 176:app_hw.c      ****             power_state.tid = switch_cmd_tid++;
+ 177:app_hw.c      ****             AppPowerSetState(&power_state, FALSE);
+ 178:app_hw.c      ****         }
+ 179:app_hw.c      **** 
+ 180:app_hw.c      ****         /* Send Light Command and Create One Second Timer when flag is set */
+ 181:app_hw.c      ****         if (startOneSecTimer)
+ 182:app_hw.c      ****         {
+ 183:app_hw.c      ****             light_level.level = brightness_level;
+ 184:app_hw.c      ****             light_level.tid = switch_cmd_tid++;
+ 185:app_hw.c      ****             AppLightSetLevel(&light_level,FALSE);
+ 186:app_hw.c      **** 
+ 187:app_hw.c      ****             /* Start 1 second timer */
+ 188:app_hw.c      ****             oneSecTimerId = TimerCreate(BUTTON_ONE_SEC_PRESS_TIME, TRUE,
+ 189:app_hw.c      ****                                                     handleButtonDebounce);
+ 190:app_hw.c      ****         }
+ 191:app_hw.c      ****     }
+ 192:app_hw.c      ****     else if (tid == oneSecTimerId)
+ 193:app_hw.c      ****     {
+ 194:app_hw.c      ****         oneSecTimerId = TIMER_INVALID;
+ 195:app_hw.c      **** 
+ 196:app_hw.c      ****         /* Key has been held Pressed for a second now */
+ 197:app_hw.c      ****         if ((PioGet(SW3_PIO) == FALSE) && (incButtonState == KEY_PRESSED))
+ 198:app_hw.c      ****         {
+ 199:app_hw.c      ****             if (brightness_level < (MAX_LEVEL - (5*LEVEL_STEP_SIZE)))
+ 200:app_hw.c      ****             {
+ 201:app_hw.c      ****                 brightness_level += (5*LEVEL_STEP_SIZE);
+ 202:app_hw.c      ****             }
+ 203:app_hw.c      ****             else
+ 204:app_hw.c      ****             {
+ 205:app_hw.c      ****                 brightness_level = MAX_LEVEL;
+ 206:app_hw.c      ****             }
+ 207:app_hw.c      **** 
+ 208:app_hw.c      ****             light_level.level = brightness_level;
+ 209:app_hw.c      ****             light_level.tid = switch_cmd_tid++;
+ 210:app_hw.c      ****             AppLightSetLevel(&light_level, FALSE);
+ 211:app_hw.c      **** 
+ 212:app_hw.c      ****             oneSecTimerId = TimerCreate(BUTTON_ONE_SEC_PRESS_TIME, TRUE,
+ 213:app_hw.c      ****                                                     handleButtonDebounce);
+ 214:app_hw.c      ****         }
+ 215:app_hw.c      **** 
+ 216:app_hw.c      ****         /* Key has been held Pressed for a second now */
+ 217:app_hw.c      ****         if ((PioGet(SW2_PIO) == FALSE) && (decButtonState == KEY_PRESSED))
+ 218:app_hw.c      ****         {
+ 219:app_hw.c      ****             if (brightness_level > (5*LEVEL_STEP_SIZE))
+ 220:app_hw.c      ****             {
+ 221:app_hw.c      ****                 brightness_level -= (5*LEVEL_STEP_SIZE);
+ 222:app_hw.c      ****             }
+ 223:app_hw.c      ****             else
+ 224:app_hw.c      ****             {
+ 225:app_hw.c      ****                 brightness_level = MIN_LEVEL;
+ 226:app_hw.c      ****             }
+ 227:app_hw.c      **** 
+ 228:app_hw.c      ****             light_level.level = brightness_level;
+ 229:app_hw.c      ****             light_level.tid = switch_cmd_tid++;
+ 230:app_hw.c      ****             AppLightSetLevel(&light_level, FALSE);
+ 231:app_hw.c      **** 
+ 232:app_hw.c      ****             oneSecTimerId = TimerCreate(BUTTON_ONE_SEC_PRESS_TIME, TRUE,
+ 233:app_hw.c      ****                                                     handleButtonDebounce);
+ 234:app_hw.c      ****         }
+ 235:app_hw.c      ****     }
+ 236:app_hw.c      **** 
+ 237:app_hw.c      ****     /* Restart the tid */
+ 238:app_hw.c      ****     switch_cmd_tid  = switch_cmd_tid > 255? 0: switch_cmd_tid;
+ 239:app_hw.c      **** 
+ 240:app_hw.c      ****     /* Update NVM if required */
+ 241:app_hw.c      ****     if (update_nvm)
+ 242:app_hw.c      ****     {
+ 243:app_hw.c      ****         WriteSwitchDataOntoNVM();
+ 244:app_hw.c      ****     }
+ 245:app_hw.c      **** }
+ 246:app_hw.c      **** 
+ 247:app_hw.c      **** 
+ 248:app_hw.c      **** /*============================================================================*
+ 249:app_hw.c      ****  *  Public function definitions
+ 250:app_hw.c      ****  *============================================================================*/
+ 251:app_hw.c      **** 
+ 252:app_hw.c      **** /*----------------------------------------------------------------------------*
+ 253:app_hw.c      ****  *  NAME
+ 254:app_hw.c      ****  *      SwitchHardwareInit
+ 255:app_hw.c      ****  *
+ 256:app_hw.c      ****  *  DESCRIPTION
+ 257:app_hw.c      ****  *      This function initializes the switch hardware, like PIO, interface etc.
+ 258:app_hw.c      ****  *
+ 259:app_hw.c      ****  * PARAMETERS
+ 260:app_hw.c      ****  *      Nothing.
+ 261:app_hw.c      ****  *
+ 262:app_hw.c      ****  * RETURNS
+ 263:app_hw.c      ****  *      Nothing.
+ 264:app_hw.c      ****  *
+ 265:app_hw.c      ****  *----------------------------------------------------------------------------*/
+ 266:app_hw.c      **** extern void SwitchHardwareInit(void)
+ 267:app_hw.c      **** {
+ 268:app_hw.c      ****     IOTSwitchInit();
+ 269:app_hw.c      **** 
+ 270:app_hw.c      ****     /* Read the satus of the SW4 PIO and set the position accordingly */
+ 271:app_hw.c      ****     if(PioGet(SW4_PIO) == FALSE)
+ 272:app_hw.c      ****     {
+ 273:app_hw.c      ****         onButtonState = KEY_PRESSED;
+ 274:app_hw.c      ****     }
+ 275:app_hw.c      **** }
+ 276:app_hw.c      **** #ifdef CSR101x_A05
+ 277:app_hw.c      **** /*----------------------------------------------------------------------------*
+ 278:app_hw.c      ****  *  NAME
+ 279:app_hw.c      ****  *      HandlePIOChangedEvent
+ 280:app_hw.c      ****  *
+ 281:app_hw.c      ****  *  DESCRIPTION
+ 282:app_hw.c      ****  *      This function handles PIO Changed event
+ 283:app_hw.c      ****  *
+ 284:app_hw.c      ****  *  RETURNS
+ 285:app_hw.c      ****  *      Nothing.
+ 286:app_hw.c      ****  *
+ 287:app_hw.c      ****  *---------------------------------------------------------------------------*/
+ 288:app_hw.c      **** extern void HandlePIOChangedEvent(pio_changed_data *data)
+ 289:app_hw.c      **** {
+ 290:app_hw.c      ****     bool start_timer = FALSE;
+ 291:app_hw.c      ****     uint32 pio_changed = data->pio_cause;
+ 292:app_hw.c      **** 
+ 293:app_hw.c      ****     /* When switch is not associated in stand alone mode,
+ 294:app_hw.c      ****      * don't send any CSR Mesh events.
+ 295:app_hw.c      ****      */
+ 296:app_hw.c      ****     if (AppGetAssociatedState() != app_state_associated)
+ 297:app_hw.c      ****     {
+ 298:app_hw.c      ****         return;
+ 299:app_hw.c      ****     }
+ 300:app_hw.c      **** 
+ 301:app_hw.c      ****     if (pio_changed & BUTTONS_BIT_MASK)
+ 302:app_hw.c      ****     {
+ 303:app_hw.c      ****         /* Check if PIO Changed from previous state */
+ 304:app_hw.c      ****         if (((PioGet(SW3_PIO) == FALSE) && (incButtonState == KEY_RELEASED)) ||
+ 305:app_hw.c      ****             ((PioGet(SW3_PIO) == TRUE) && (incButtonState == KEY_PRESSED)))
+ 306:app_hw.c      ****         {
+ 307:app_hw.c      ****             start_timer = TRUE;
+ 308:app_hw.c      ****         }
+ 309:app_hw.c      **** 
+ 310:app_hw.c      ****         if (((PioGet(SW2_PIO) == FALSE) && (decButtonState == KEY_RELEASED)) ||
+ 311:app_hw.c      ****             ((PioGet(SW2_PIO) == TRUE) && (decButtonState == KEY_PRESSED)))
+ 312:app_hw.c      ****         {
+ 313:app_hw.c      ****             start_timer = TRUE;
+ 314:app_hw.c      ****         }
+ 315:app_hw.c      **** 
+ 316:app_hw.c      ****         if (((PioGet(SW4_PIO) == FALSE) && (onButtonState== KEY_RELEASED)) ||
+ 317:app_hw.c      ****             ((PioGet(SW4_PIO) == TRUE) && (onButtonState == KEY_PRESSED)))
+ 318:app_hw.c      ****         {
+ 319:app_hw.c      ****             start_timer = TRUE;
+ 320:app_hw.c      ****         }
+ 321:app_hw.c      ****     }
+ 322:app_hw.c      **** 
+ 323:app_hw.c      ****     if (start_timer)
+ 324:app_hw.c      ****     {
+ 325:app_hw.c      ****         /* Disable further Events */
+ 326:app_hw.c      ****         PioSetEventMask(BUTTONS_BIT_MASK, pio_event_mode_disable);
+ 327:app_hw.c      **** 
+ 328:app_hw.c      ****         /* Start a timer for de-bounce and delete one second timer
+ 329:app_hw.c      ****          * as we received a new event.
+ 330:app_hw.c      ****          */
+ 331:app_hw.c      ****         TimerDelete(oneSecTimerId);
+ 332:app_hw.c      ****         oneSecTimerId = TIMER_INVALID;
+ 333:app_hw.c      ****         TimerDelete(debounce_tid);
+ 334:app_hw.c      ****         debounce_tid =
+ 335:app_hw.c      ****                 TimerCreate(BUTTON_DEBOUNCE_TIME, TRUE, handleButtonDebounce);
+ 336:app_hw.c      ****     }
+ 337:app_hw.c      **** }
+ 338:app_hw.c      **** #else
+ 339:app_hw.c      **** /*----------------------------------------------------------------------------*
+ 340:app_hw.c      ****  *  NAME
+ 341:app_hw.c      ****  *      HandlePIOChangedEvent
+ 342:app_hw.c      ****  *
+ 343:app_hw.c      ****  *  DESCRIPTION
+ 344:app_hw.c      ****  *      This function handles PIO Changed event
+ 345:app_hw.c      ****  *
+ 346:app_hw.c      ****  *  RETURNS
+ 347:app_hw.c      ****  *      Nothing.
+ 348:app_hw.c      ****  *
+ 349:app_hw.c      ****  *---------------------------------------------------------------------------*/
+ 350:app_hw.c      **** extern void HandlePIOChangedEvent(pio_changed_data *data)
+ 351:app_hw.c      **** {
+ 352:app_hw.c      ****     bool start_timer = FALSE;
+ 353:app_hw.c      ****     pio_changed_data *event_data;
+ 354:app_hw.c      ****     uint16 sw3_index, sw2_index, sw4_index;
+ 355:app_hw.c      **** 
+ 356:app_hw.c      ****     /* When switch is not associated in stand alone mode,
+ 357:app_hw.c      ****      * don't send any CSR Mesh events.
+ 358:app_hw.c      ****      */
+ 359:app_hw.c      ****     if (AppGetAssociatedState() != app_state_associated)
+ 360:app_hw.c      ****     {
+ 361:app_hw.c      ****         return;
+ 362:app_hw.c      ****     }
+ 363:app_hw.c      **** 
+ 364:app_hw.c      ****     /* The PIO changed data is defined by struct pio_changed_data */
+ 365:app_hw.c      ****     event_data = (pio_changed_data *)data;
+ 366:app_hw.c      **** 
+ 367:app_hw.c      ****     /* Get the IOT switch mask */
+ 368:app_hw.c      ****     GetIOTSwitchMask(SW3_PIO, &sw3_mask, &sw3_index);
+ 369:app_hw.c      ****     GetIOTSwitchMask(SW2_PIO, &sw2_mask, &sw2_index);
+ 370:app_hw.c      ****     GetIOTSwitchMask(SW4_PIO, &sw4_mask, &sw4_index);
+ 371:app_hw.c      **** 
+ 372:app_hw.c      ****     /* If the PIO event comes from the button */
+ 373:app_hw.c      ****     if((event_data->pio_cause.mask[sw3_index] & sw3_mask.mask[sw3_index]) ||
+ 374:app_hw.c      ****        (event_data->pio_cause.mask[sw2_index] & sw2_mask.mask[sw2_index]) ||
+ 375:app_hw.c      ****        (event_data->pio_cause.mask[sw4_index] & sw4_mask.mask[sw4_index]))
+ 376:app_hw.c      ****     {
+ 377:app_hw.c      ****         start_timer = TRUE;
+ 378:app_hw.c      ****     }
+ 379:app_hw.c      **** 
+ 380:app_hw.c      ****     if (start_timer)
+ 381:app_hw.c      ****     {
+ 382:app_hw.c      ****         /* Disable further Events */
+ 383:app_hw.c      ****         PioSetEventMultiple(sw3_mask, pio_event_mode_disable);
+ 384:app_hw.c      ****         PioSetEventMultiple(sw2_mask, pio_event_mode_disable);
+ 385:app_hw.c      ****         PioSetEventMultiple(sw4_mask, pio_event_mode_disable);
+ 386:app_hw.c      **** 
+ 387:app_hw.c      ****         /* Start a timer for de-bounce and delete one second timer
+ 388:app_hw.c      ****          * as we received a new event.
+ 389:app_hw.c      ****          */
+ 390:app_hw.c      ****         TimerDelete(oneSecTimerId);
+ 391:app_hw.c      ****         oneSecTimerId = TIMER_INVALID;
+ 392:app_hw.c      ****         TimerDelete(debounce_tid);
+ 393:app_hw.c      ****         debounce_tid =
+ 394:app_hw.c      ****                 TimerCreate(BUTTON_DEBOUNCE_TIME, TRUE, handleButtonDebounce);
+ 395:app_hw.c      ****     }
+ 396:app_hw.c      **** }
+ 397:app_hw.c      **** #endif
+ 398:app_hw.c      **** 
+ 399:app_hw.c      **** /*----------------------------------------------------------------------------*
+ 400:app_hw.c      ****  *  NAME
+ 401:app_hw.c      ****  *      ReadSwitchDataFromNVM
+ 402:app_hw.c      ****  *
+ 403:app_hw.c      ****  *  DESCRIPTION
+ 404:app_hw.c      ****  *      This function reads the switch data from NVM.
+ 405:app_hw.c      ****  *
+ 406:app_hw.c      ****  *  RETURNS
+ 407:app_hw.c      ****  *      Nothing.
+ 408:app_hw.c      ****  *
+ 409:app_hw.c      ****  *---------------------------------------------------------------------------*/
+ 410:app_hw.c      **** extern void ReadSwitchDataFromNVM(void)
+ 411:app_hw.c      **** {
+ 412:app_hw.c      ****     Nvm_Read((uint16 *)&brightness_level, 
+ 413:app_hw.c      ****               sizeof(uint16),
+ 414:app_hw.c      ****               NVM_OFFSET_SWITCH_STATE);
+ 415:app_hw.c      **** }
+ 416:app_hw.c      **** 
+ 417:app_hw.c      **** /*----------------------------------------------------------------------------*
+ 418:app_hw.c      ****  *  NAME
+ 419:app_hw.c      ****  *      WriteSwitchDataOntoNVM
+ 420:app_hw.c      ****  *
+ 421:app_hw.c      ****  *  DESCRIPTION
+ 422:app_hw.c      ****  *      This function writes switch data onto NVM.
+ 423:app_hw.c      ****  *
+ 424:app_hw.c      ****  *  RETURNS
+ 425:app_hw.c      ****  *      Nothing.
+ 426:app_hw.c      ****  *
+ 427:app_hw.c      ****  *---------------------------------------------------------------------------*/
+ 428:app_hw.c      **** extern void WriteSwitchDataOntoNVM(void)
+ 429:app_hw.c      **** {
+  20                 	rl	#0x0003
+  21 0000 FD 0B       	.LCFI0:
+  22                 		.loc 1 431 0
+ 430:app_hw.c      **** oid)
+  23                 		AL,#0x013d
+  24 0001 01 00 3D 14 		st	AL,@(0,Y)
+  25 0003 00 27       		ld	AL,#brightness_level
+  26 0004 00 00 00 14 		ld	AH,#0x0001
+  27 0006 01 10       		bsr	Nvm_Write
+  28 0007 00 00 00 00 		.loc 1 434 0
+  28      00 9C 
+ 431:app_hw.c      **** M(void)
+ 432:app_hw.c      **** {
+ 433:app_hw.c      ****     Nvm_Write((uint16 *)&brightness_level, 
+  29                 	l	#0x0003
+  30 000a FD 0F       	.LFE6:
+  31                 		.size	WriteSwitchDataOntoNVM, .-WriteSwitchDataOntoNVM
+  32                 		.global	__size_of_WriteSwitchDataOntoNVM
+  33                 		.equ	__size_of_WriteSwitchDataOntoNVM,. - WriteSwitchDataOntoNVM
+  34                 		.section	.text.ReadSwitchDataFromNVM,"ax",@progbits
+  35                 		.global	ReadSwitchDataFromNVM
+  36                 		.type	ReadSwitchDataFromNVM, @function
+  37                 	ReadSwitchDataFromNVM:
+  38                 	.LFB5:
+  39                 		.loc 1 412 0
+ 412:app_hw.c      **** {
+  40                 	0003
+  41 0000 FD 0B       	.LCFI1:
+  42                 		.loc 1 413 0
+ 413:app_hw.c      ****     Nvm_Read((uint16 *)&brightness_level, 
+  43                 		AL,#0x013d
+  44 0001 01 00 3D 14 		st	AL,@(0,Y)
+  45 0003 00 27       		ld	AL,#brightness_level
+  46 0004 00 00 00 14 		ld	AH,#0x0001
+  47 0006 01 10       		bsr	Nvm_Read
+  48 0007 00 00 00 00 		.loc 1 416 0
+  48      00 9C 
+ 416:app_hw.c      **** }
+  49                 	l	#0x0003
+  50 000a FD 0F       	.LFE5:
+  51                 		.size	ReadSwitchDataFromNVM, .-ReadSwitchDataFromNVM
+  52                 		.global	__size_of_ReadSwitchDataFromNVM
+  53                 		.equ	__size_of_ReadSwitchDataFromNVM,. - ReadSwitchDataFromNVM
+  54                 		.section	.text.HandlePIOChangedEvent,"ax",@progbits
+  55                 		.global	HandlePIOChangedEvent
+  56                 		.type	HandlePIOChangedEvent, @function
+  57                 	HandlePIOChangedEvent:
+  58                 	.LFB4:
+  59                 		.loc 1 352 0
+ 352:app_hw.c      **** {
+  60                 	erl	#0x000a
+  61                 	.LCFI2:
+  62 0000 F6 0B       		st	AL,@(0x0007,Y)
+  63                 		.loc 1 360 0
+  64 0001 07 27       		bsr	AppGetAssociatedState
+ 360:app_hw.c      ****     if (AppGetAssociatedState() != app_state_associated)
+  65                 	:
+  66 0002 00 00 00 00 		cmp	AL,#0x0002
+  66      00 9C 
+  67                 		bne	.L8
+  68 0005 02 84       		.loc 1 369 0
+  69 0006 00 00 00 00 		ld	AL,@$XAP_UY
+  69      00 F0 
+ 369:app_hw.c      ****     GetIOTSwitchMask(SW3_PIO, &sw3_mask, &sw3_index);
+  70                 	AL,#0x0004
+  71 0009 00 00 00 15 		st	AL,@(0,Y)
+  72 000b 04 34       		ld	AL,#0x0017
+  73 000c 00 27       		ld	AH,#sw3_mask
+  74 000d 17 14       		bsr	GetIOTSwitchMask
+  75 000e 00 00 00 10 		.loc 1 370 0
+  76 0010 00 00 00 00 		ld	X,@$XAP_UY
+  76      00 9C 
+ 370:app_hw.c      ****     GetIOTSwitchMask(SW2_PIO, &sw2_mask, &sw2_index);
+  77                 	#0x0005
+  78 0013 00 00 00 19 		st	X,@(0,Y)
+  79 0015 05 38       		ld	AL,#0x0018
+  80 0016 00 2B       		ld	AH,#sw2_mask
+  81 0017 18 14       		bsr	GetIOTSwitchMask
+  82 0018 00 00 00 10 		.loc 1 371 0
+  83 001a 00 00 00 00 		ld	AL,@$XAP_UY
+  83      00 9C 
+ 371:app_hw.c      ****     GetIOTSwitchMask(SW4_PIO, &sw4_mask, &sw4_index);
+  84                 	,#0x0006
+  85 001d 00 00 00 15 		st	AL,@(0,Y)
+  86 001f 06 34       		ld	AL,#0x0016
+  87 0020 00 27       		ld	AH,#sw4_mask
+  88 0021 16 14       		bsr	GetIOTSwitchMask
+  89 0022 00 00 00 10 		.loc 1 374 0
+  90 0024 00 00 00 00 		ld	AH,@(0x0004,Y)
+  90      00 9C 
+ 374:app_hw.c      ****     if((event_data->pio_cause.mask[sw3_index] & sw3_mask.mask[sw3_index]) ||
+  91                 		ld	AL,@(0x0007,Y)
+  92 0027 04 13       		add	AL,@$XAP_AH
+  93                 		ld	X,@$XAP_AL
+  94 0028 07 17       		ld	AL,@(0x0003,X)
+  95 0029 00 00 00 35 		ld	X,@$XAP_AH
+  96 002b 00 00 00 19 		and	AL,@(sw3_mask+0,X)
+  97 002d 03 16       		bne	.L7
+  98 002e 00 00 00 19 		ld	AH,@(0x0005,Y)
+  99 0030 00 00 00 C6 	.LVL3:
+ 100 0032 00 00 00 00 		ld	AL,@(0x0007,Y)
+ 100      00 F0 
+ 101 0035 05 13       		add	AL,@$XAP_AH
+ 102                 		ld	X,@$XAP_AL
+ 103 0036 07 17       		ld	AL,@(0x0003,X)
+ 104 0037 00 00 00 35 		ld	X,@$XAP_AH
+ 105 0039 00 00 00 19 		and	AL,@(sw2_mask+0,X)
+ 106 003b 03 16       		bne	.L7
+ 107 003c 00 00 00 19 		ld	AH,@(0x0006,Y)
+ 108 003e 00 00 00 C6 	.LVL4:
+ 109 0040 00 00 00 00 		ld	AL,@(0x0007,Y)
+ 109      00 F0 
+ 110 0043 06 13       		add	AL,@$XAP_AH
+ 111                 		st	AL,@(0x0007,Y)
+ 112 0044 07 17       	.LVL5:
+ 113 0045 00 00 00 35 		ld	X,@$XAP_AH
+ 114 0047 07 27       		ld	AL,@(sw4_mask+0,X)
+ 115                 		ld	X,@(0x0007,Y)
+ 116 0048 00 00 00 19 		and	AL,@(0x0003,X)
+ 117 004a 00 00 00 16 		beq	.L8
+ 118 004c 07 1B       	.L7:
+ 119 004d 03 C6       		.loc 1 384 0
+ 120 004e 00 00 00 00 		ld	AL,#0x0003
+ 120      00 F4 
+ 121                 		ld	AH,@$XAP_UY
+ 384:app_hw.c      ****         PioSetEventMultiple(sw3_mask, pio_event_mode_disable);
+ 122                 	x0003,Y)
+ 123 0051 03 14       		bsr	PioSetEventMultiple
+ 124 0052 00 00 00 11 		.loc 1 385 0
+ 125 0054 00 00 00 18 		ld	AL,#0x0003
+ 126 0056 FD 09       		ld	AH,@$XAP_UY
+ 127 0057 03 27       		ld	X,#sw2_mask
+ 128 0058 00 00 00 00 		bc2
+ 128      00 9C 
+ 385:app_hw.c      ****         PioSetEventMultiple(sw2_mask, pio_event_mode_disable);
+ 129                 	0x0000
+ 130 005b 03 14       		st	X,@(0x0003,Y)
+ 131 005c 00 00 00 11 		bsr	PioSetEventMultiple
+ 132 005e 00 00 00 18 		.loc 1 386 0
+ 133 0060 FD 09       		ld	AL,#0x0003
+ 134 0061 00 18       		ld	AH,@$XAP_UY
+ 135 0062 03 2B       		ld	X,#sw4_mask
+ 136 0063 00 00 00 00 		bc2
+ 136      00 9C 
+ 386:app_hw.c      ****         PioSetEventMultiple(sw4_mask, pio_event_mode_disable);
+ 137                 	(0x0003,Y)
+ 138 0066 03 14       		bsr	PioSetEventMultiple
+ 139 0067 00 00 00 11 		.loc 1 391 0
+ 140 0069 00 00 00 18 		ld	AL,@oneSecTimerId
+ 141 006b FD 09       		bsr	TimerDelete
+ 142 006c 03 27       		.loc 1 392 0
+ 143 006d 00 00 00 00 		ld	X,#0x0000
+ 143      00 9C 
+ 391:app_hw.c      ****         TimerDelete(oneSecTimerId);
+ 144                 	oneSecTimerId
+ 145 0070 00 00 00 15 		.loc 1 393 0
+ 146 0072 00 00 00 00 		ld	AL,@debounce_tid
+ 146      00 9C 
+ 392:app_hw.c      ****         oneSecTimerId = TIMER_INVALID;
+ 147                 	r	TimerDelete
+ 148 0075 00 18       		.loc 1 394 0
+ 149 0076 00 00 00 29 		ld	AL,#0x0001
+ 393:app_hw.c      ****         TimerDelete(debounce_tid);
+ 150                 		AL,@(0,Y)
+ 151 0078 00 00 00 15 		ld	X,#lwrd(handleButtonDebounce)
+ 152 007a 00 00 00 00 		st	X,@(0x0002,Y)
+ 152      00 9C 
+ 394:app_hw.c      ****         debounce_tid =
+ 153                 		AL,#hwrd(handleButtonDebounce)
+ 154 007d 01 14       		st	AL,@(0x0001,Y)
+ 155 007e 00 27       		ld	AH,#0x0000
+ 156 007f 00 00 00 18 		ld	AL,#0x4e20
+ 157 0081 02 2B       		bsr	TimerCreate
+ 158 0082 00 00 00 14 		st	AL,@debounce_tid
+ 159 0084 01 27       	.L8:
+ 160 0085 00 10       		.loc 1 397 0
+ 161 0086 4E 00 20 14 		leavel	#0x000a
+ 162 0088 00 00 00 00 	.LFE4:
+ 162      00 9C 
+ 163 008b 00 00 00 25 		.size	HandlePIOChangedEvent, .-HandlePIOChangedEvent
+ 164                 		.global	__size_of_HandlePIOChangedEvent
+ 397:app_hw.c      **** }
+ 165                 	_of_HandlePIOChangedEvent,. - HandlePIOChangedEvent
+ 166 008d F6 0F       		.section	.text.handleButtonDebounce,"ax",@progbits
+ 167                 		.type	handleButtonDebounce, @function
+ 168                 	handleButtonDebounce:
+ 169                 	.LFB2:
+ 170                 		.loc 1 93 0
+ 171                 	.LVL6:
+ 172                 		enterl	#0x000c
+ 173                 	.LCFI3:
+ 174                 		.loc 1 99 0
+  93:app_hw.c      **** {
+ 175                 	ebounce_tid
+ 176                 		bne	.L10
+ 177 0000 F4 0B       		.loc 1 101 0
+ 178                 		ld	AL,#0x0000
+  99:app_hw.c      ****     if( tid == debounce_tid)
+ 179                 	7:
+ 180 0001 00 00 00 85 		st	AL,@debounce_tid
+ 181 0003 00 00 00 00 		.loc 1 107 0
+ 181      00 F0 
+ 101:app_hw.c      ****         debounce_tid = TIMER_INVALID;
+ 182                 		AL,#0x0003
+ 183 0006 00 14       		ld	AH,@$XAP_UY
+ 184                 		ld	X,#sw3_mask
+ 185 0007 00 00 00 25 		bc2
+ 107:app_hw.c      ****         PioSetEventMultiple(sw3_mask,
+ 186                 	AL,#0x000f
+ 187 0009 03 14       		st	AL,@(0x0003,Y)
+ 188 000a 00 00 00 11 		bsr	PioSetEventMultiple
+ 189 000c 00 00 00 18 		.loc 1 109 0
+ 190 000e FD 09       		ld	AL,#0x0003
+ 191 000f 0F 14       		ld	AH,@$XAP_UY
+ 192 0010 03 27       		ld	X,#sw2_mask
+ 193 0011 00 00 00 00 		bc2
+ 193      00 9C 
+ 109:app_hw.c      ****         PioSetEventMultiple(sw2_mask, 
+ 194                 	0x000f
+ 195 0014 03 14       		st	AL,@(0x0003,Y)
+ 196 0015 00 00 00 11 		bsr	PioSetEventMultiple
+ 197 0017 00 00 00 18 		.loc 1 111 0
+ 198 0019 FD 09       		ld	AL,#0x0003
+ 199 001a 0F 14       		ld	AH,@$XAP_UY
+ 200 001b 03 27       		ld	X,#sw4_mask
+ 201 001c 00 00 00 00 		bc2
+ 201      00 9C 
+ 111:app_hw.c      ****         PioSetEventMultiple(sw4_mask, 
+ 202                 	0x000f
+ 203 001f 03 14       		st	AL,@(0x0003,Y)
+ 204 0020 00 00 00 11 		bsr	PioSetEventMultiple
+ 205 0022 00 00 00 18 		.loc 1 118 0
+ 206 0024 FD 09       		ld	AL,#0x0017
+ 207 0025 0F 14       		bsr	PioGet
+ 208 0026 03 27       		tst	@$XAP_AL
+ 209 0027 00 00 00 00 		bne	.L11
+ 209      00 9C 
+ 118:app_hw.c      ****         if ((PioGet(SW3_PIO) == FALSE) && (incButtonState == KEY_RELEASED))
+ 210                 	cButtonState
+ 211 002a 17 14       		bne	.L11
+ 212 002b 00 00 00 00 		.loc 1 121 0
+ 212      00 9C 
+ 213 002e 00 00 00 99 		ld	AL,#0x0001
+ 214 0030 00 00 00 00 		st	AL,@incButtonState
+ 214      00 F0 
+ 215 0033 00 00 00 99 		.loc 1 122 0
+ 216 0035 00 00 00 00 		ld	AL,@brightness_level
+ 216      00 F0 
+ 121:app_hw.c      ****             incButtonState = KEY_PRESSED;
+ 217                 	,#0x00fb
+ 218 0038 01 14       		bcc	.L12
+ 219 0039 00 00 00 25 		.loc 1 124 0
+ 122:app_hw.c      ****             if (brightness_level < (MAX_LEVEL - LEVEL_STEP_SIZE))
+ 220                 	d	AL,#0x0004
+ 221 003b 00 00 00 15 		bra	.L35
+ 222 003d 01 00 FB 84 	.L12:
+ 223 003f 00 00 00 00 		.loc 1 128 0
+ 223      00 F8 
+ 124:app_hw.c      ****                 brightness_level += LEVEL_STEP_SIZE;
+ 224                 	AL,#0x00ff
+ 225 0042 04 34       	.L35:
+ 226 0043 00 00 00 00 		st	AL,@brightness_level
+ 226      00 E0 
+ 227                 		ld	AL,#0x0001
+ 128:app_hw.c      ****                 brightness_level = MAX_LEVEL;
+ 228                 	AL,@(0x0009,Y)
+ 229 0046 01 00 FF 14 	.LVL8:
+ 230                 		ld	AL,#0x0000
+ 231 0048 00 00 00 25 		bra	.L30
+ 232 004a 01 14       	.LVL9:
+ 233 004b 09 27       	.L11:
+ 234                 		.loc 1 134 0
+ 235 004c 00 14       		ld	AL,#0x0017
+ 236 004d 00 00 00 00 		bsr	PioGet
+ 236      00 E0 
+ 237                 		cmp	AL,#0x0001
+ 238                 		bne	.L14
+ 134:app_hw.c      ****         else if ((PioGet(SW3_PIO) == TRUE) && (incButtonState == KEY_PRESSED))
+ 239                 	ButtonState
+ 240 0050 17 14       		cmp	AL,#0x0001
+ 241 0051 00 00 00 00 		bne	.L14
+ 241      00 9C 
+ 242 0054 01 84       		.loc 1 137 0
+ 243 0055 00 00 00 00 		ld	AL,#0x0000
+ 243      00 F0 
+ 244 0058 00 00 00 15 		st	AL,@incButtonState
+ 245 005a 01 84       		st	AL,@(0x0009,Y)
+ 246 005b 00 00 00 00 	.LVL10:
+ 246      00 F0 
+ 137:app_hw.c      ****             incButtonState = KEY_RELEASED;
+ 247                 	0x0001
+ 248 005e 00 14       		bra	.L30
+ 249 005f 00 00 00 25 	.LVL11:
+ 250 0061 09 27       	.L14:
+ 251                 		ld	AL,#0x0000
+ 252 0062 01 14       		st	AL,@(0x0009,Y)
+ 253 0063 00 00 00 00 	.LVL12:
+ 253      00 E0 
+ 254                 	.L30:
+ 255                 		st	AL,@(0x0008,Y)
+ 256 0066 00 14       	.LVL13:
+ 257 0067 09 27       		.loc 1 141 0
+ 258                 		ld	AL,#0x0018
+ 259                 		bsr	PioGet
+ 260 0068 08 27       		tst	@$XAP_AL
+ 261                 		bne	.L15
+ 141:app_hw.c      ****         if ((PioGet(SW2_PIO) == FALSE) && (decButtonState == KEY_RELEASED))
+ 262                 	State
+ 263 0069 18 14       		bne	.L15
+ 264 006a 00 00 00 00 		.loc 1 144 0
+ 264      00 9C 
+ 265 006d 00 00 00 99 		ld	AL,#0x0001
+ 266 006f 00 00 00 00 		st	AL,@decButtonState
+ 266      00 F0 
+ 267 0072 00 00 00 99 		.loc 1 145 0
+ 268 0074 00 00 00 00 		ld	AL,@brightness_level
+ 268      00 F0 
+ 144:app_hw.c      ****             decButtonState = KEY_PRESSED;
+ 269                 	,#0x0004
+ 270 0077 01 14       		bcz	.L16
+ 271 0078 00 00 00 25 		.loc 1 147 0
+ 145:app_hw.c      ****             if (brightness_level > LEVEL_STEP_SIZE)
+ 272                 	d	AL,#0xfffc
+ 273 007a 00 00 00 15 		bra	.L31
+ 274 007c 04 84       	.L16:
+ 275 007d 00 00 00 00 		.loc 1 151 0
+ 275      00 2C 
+ 147:app_hw.c      ****                 brightness_level -= LEVEL_STEP_SIZE;
+ 276                 	AL,#0x0000
+ 277 0080 FC 34       	.L31:
+ 278 0081 00 00 00 00 		st	AL,@brightness_level
+ 278      00 E0 
+ 279                 		ld	AL,#0x0001
+ 151:app_hw.c      ****                 brightness_level = MIN_LEVEL;
+ 280                 	AL,@(0x0009,Y)
+ 281 0084 00 14       	.LVL14:
+ 282                 		bra	.L17
+ 283 0085 00 00 00 25 	.L15:
+ 284 0087 01 14       		.loc 1 157 0
+ 285 0088 09 27       		ld	AL,#0x0018
+ 286                 		bsr	PioGet
+ 287 0089 00 00 00 00 		cmp	AL,#0x0001
+ 287      00 E0 
+ 288                 		bne	.L17
+ 157:app_hw.c      ****         else if ((PioGet(SW2_PIO) == TRUE) && (decButtonState == KEY_PRESSED))
+ 289                 	ecButtonState
+ 290 008c 18 14       		cmp	AL,#0x0001
+ 291 008d 00 00 00 00 		bne	.L17
+ 291      00 9C 
+ 292 0090 01 84       		.loc 1 160 0
+ 293 0091 00 00 00 00 		ld	AL,#0x0000
+ 293      00 F0 
+ 294 0094 00 00 00 15 		st	AL,@decButtonState
+ 295 0096 01 84       		ld	AL,#0x0001
+ 296 0097 00 00 00 00 		st	AL,@(0x0008,Y)
+ 296      00 F0 
+ 160:app_hw.c      ****             decButtonState = KEY_RELEASED;
+ 297                 	.L17:
+ 298 009a 00 14       		.loc 1 164 0
+ 299 009b 00 00 00 25 		ld	AL,#0x0016
+ 300 009d 01 14       		bsr	PioGet
+ 301 009e 08 27       		tst	@$XAP_AL
+ 302                 		bne	.L18
+ 303                 		tst	@onButtonState
+ 164:app_hw.c      ****         if ((PioGet(SW4_PIO) == FALSE) && (onButtonState == KEY_RELEASED))
+ 304                 	18
+ 305 009f 16 14       		.loc 1 167 0
+ 306 00a0 00 00 00 00 		ld	AL,#0x0001
+ 306      00 9C 
+ 307 00a3 00 00 00 99 		bra	.L32
+ 308 00a5 00 00 00 00 	.L18:
+ 308      00 F0 
+ 309 00a8 00 00 00 99 		.loc 1 172 0
+ 310 00aa 00 00 00 00 		ld	AL,#0x0016
+ 310      00 F0 
+ 167:app_hw.c      ****             onButtonState = KEY_PRESSED;
+ 311                 	oGet
+ 312 00ad 01 14       		cmp	AL,#0x0001
+ 313 00ae 00 00 00 00 		bne	.L19
+ 313      00 E0 
+ 314                 		ld	AL,@onButtonState
+ 172:app_hw.c      ****         else if ((PioGet(SW4_PIO) == TRUE) && (onButtonState == KEY_PRESSED))
+ 315                 		AL,#0x0001
+ 316 00b1 16 14       		bne	.L19
+ 317 00b2 00 00 00 00 		.loc 1 175 0
+ 317      00 9C 
+ 318 00b5 01 84       		ld	AL,#0x0000
+ 319 00b6 00 00 00 00 	.L32:
+ 319      00 F0 
+ 320 00b9 00 00 00 15 		st	AL,@onButtonState
+ 321 00bb 01 84       		.loc 1 176 0
+ 322 00bc 00 00 00 00 		st	AL,@(0x0004,Y)
+ 322      00 F0 
+ 175:app_hw.c      ****             onButtonState = KEY_RELEASED;
+ 323                 	177 0
+ 324 00bf 00 14       		ld	AL,@switch_cmd_tid
+ 325                 		st	AL,@(0x0005,Y)
+ 326 00c0 00 00 00 25 		add	AL,#0x0001
+ 176:app_hw.c      ****             power_state.state = csr_mesh_power_state_off;
+ 327                 	AL,@switch_cmd_tid
+ 328 00c2 04 27       		.loc 1 178 0
+ 177:app_hw.c      ****             power_state.tid = switch_cmd_tid++;
+ 329                 	d	AL,@$XAP_UY
+ 330 00c3 00 00 00 15 		add	AL,#0x0004
+ 331 00c5 05 27       		ld	AH,#0x0000
+ 332 00c6 01 34       		bsr	AppPowerSetState
+ 333 00c7 00 00 00 25 	.L19:
+ 178:app_hw.c      ****             AppPowerSetState(&power_state, FALSE);
+ 334                 	 1 182 0
+ 335 00c9 00 00 00 15 		tst	@(0x0009,Y)
+ 336 00cb 04 34       		beq	.L20
+ 337 00cc 00 10       		.loc 1 184 0
+ 338 00cd 00 00 00 00 		ld	AL,@brightness_level
+ 338      00 9C 
+ 339                 		st	AL,@(0x0006,Y)
+ 182:app_hw.c      ****         if (startOneSecTimer)
+ 340                 	1 185 0
+ 341 00d0 09 9B       		ld	AL,@switch_cmd_tid
+ 342 00d1 00 00 00 00 		st	AL,@(0x0007,Y)
+ 342      00 F4 
+ 184:app_hw.c      ****             light_level.level = brightness_level;
+ 343                 	d	AL,#0x0001
+ 344 00d4 00 00 00 15 		st	AL,@switch_cmd_tid
+ 345 00d6 06 27       		.loc 1 186 0
+ 185:app_hw.c      ****             light_level.tid = switch_cmd_tid++;
+ 346                 		AL,@$XAP_UY
+ 347 00d7 00 00 00 15 		add	AL,#0x0006
+ 348 00d9 07 27       		ld	AH,#0x0000
+ 349 00da 01 34       		bsr	AppLightSetLevel
+ 350 00db 00 00 00 25 		.loc 1 189 0
+ 186:app_hw.c      ****             AppLightSetLevel(&light_level,FALSE);
+ 351                 	L,#0x0001
+ 352 00dd 00 00 00 15 		st	AL,@(0,Y)
+ 353 00df 06 34       		ld	AL,#lwrd(handleButtonDebounce)
+ 354 00e0 00 10       		st	AL,@(0x0002,Y)
+ 355 00e1 00 00 00 00 		ld	AL,#hwrd(handleButtonDebounce)
+ 355      00 9C 
+ 189:app_hw.c      ****             oneSecTimerId = TimerCreate(BUTTON_ONE_SEC_PRESS_TIME, TRUE,
+ 356                 	L,@(0x0001,Y)
+ 357 00e4 01 14       		ld	AH,#0x000f
+ 358 00e5 00 27       		ld	AL,#0x4240
+ 359 00e6 00 00 00 14 		bsr	TimerCreate
+ 360 00e8 02 27       		st	AL,@oneSecTimerId
+ 361 00e9 00 00 00 14 		bra	.L20
+ 362 00eb 01 27       	.LVL16:
+ 363 00ec 0F 10       	.L10:
+ 364 00ed 42 00 40 14 		.loc 1 193 0
+ 365 00ef 00 00 00 00 		cmp	AL,@oneSecTimerId
+ 365      00 9C 
+ 366 00f2 00 00 00 25 		bne	.L21
+ 367 00f4 00 00 00 00 		.loc 1 195 0
+ 367      00 E0 
+ 368                 		ld	AL,#0x0000
+ 369                 	.LVL17:
+ 193:app_hw.c      ****     else if (tid == oneSecTimerId)
+ 370                 	TimerId
+ 371 00f7 00 00 00 85 		.loc 1 198 0
+ 372 00f9 00 00 00 00 		ld	AL,#0x0017
+ 372      00 F0 
+ 195:app_hw.c      ****         oneSecTimerId = TIMER_INVALID;
+ 373                 	r	PioGet
+ 374 00fc 00 14       		tst	@$XAP_AL
+ 375                 		bne	.L22
+ 376 00fd 00 00 00 25 		ld	AL,@incButtonState
+ 198:app_hw.c      ****         if ((PioGet(SW3_PIO) == FALSE) && (incButtonState == KEY_PRESSED))
+ 377                 		AL,#0x0001
+ 378 00ff 17 14       		bne	.L22
+ 379 0100 00 00 00 00 		.loc 1 200 0
+ 379      00 9C 
+ 380 0103 00 00 00 99 		ld	AL,@brightness_level
+ 381 0105 00 00 00 00 		cmp	AL,#0x00eb
+ 381      00 F0 
+ 382 0108 00 00 00 15 		bcc	.L23
+ 383 010a 01 84       		.loc 1 202 0
+ 384 010b 00 00 00 00 		add	AL,#0x0014
+ 384      00 F0 
+ 200:app_hw.c      ****             if (brightness_level < (MAX_LEVEL - (5*LEVEL_STEP_SIZE)))
+ 385                 	3
+ 386 010e 00 00 00 15 	.L23:
+ 387 0110 01 00 EB 84 		.loc 1 206 0
+ 388 0112 00 00 00 00 		ld	AL,#0x00ff
+ 388      00 F8 
+ 202:app_hw.c      ****                 brightness_level += (5*LEVEL_STEP_SIZE);
+ 389                 	:
+ 390 0115 14 34       		st	AL,@brightness_level
+ 391 0116 00 00 00 00 		.loc 1 209 0
+ 391      00 E0 
+ 392                 		ld	AL,@brightness_level
+ 206:app_hw.c      ****                 brightness_level = MAX_LEVEL;
+ 393                 	AL,@(0x0006,Y)
+ 394 0119 01 00 FF 14 		.loc 1 210 0
+ 395                 		ld	AL,@switch_cmd_tid
+ 396 011b 00 00 00 25 		st	AL,@(0x0007,Y)
+ 209:app_hw.c      ****             light_level.level = brightness_level;
+ 397                 		AL,#0x0001
+ 398 011d 00 00 00 15 		st	AL,@switch_cmd_tid
+ 399 011f 06 27       		.loc 1 211 0
+ 210:app_hw.c      ****             light_level.tid = switch_cmd_tid++;
+ 400                 		AL,@$XAP_UY
+ 401 0120 00 00 00 15 		add	AL,#0x0006
+ 402 0122 07 27       		ld	AH,#0x0000
+ 403 0123 01 34       		bsr	AppLightSetLevel
+ 404 0124 00 00 00 25 		.loc 1 213 0
+ 211:app_hw.c      ****             AppLightSetLevel(&light_level, FALSE);
+ 405                 	L,#0x0001
+ 406 0126 00 00 00 15 		st	AL,@(0,Y)
+ 407 0128 06 34       		ld	AL,#lwrd(handleButtonDebounce)
+ 408 0129 00 10       		st	AL,@(0x0002,Y)
+ 409 012a 00 00 00 00 		ld	AL,#hwrd(handleButtonDebounce)
+ 409      00 9C 
+ 213:app_hw.c      ****             oneSecTimerId = TimerCreate(BUTTON_ONE_SEC_PRESS_TIME, TRUE,
+ 410                 	L,@(0x0001,Y)
+ 411 012d 01 14       		ld	AH,#0x000f
+ 412 012e 00 27       		ld	AL,#0x4240
+ 413 012f 00 00 00 14 		bsr	TimerCreate
+ 414 0131 02 27       		st	AL,@oneSecTimerId
+ 415 0132 00 00 00 14 	.L22:
+ 416 0134 01 27       		.loc 1 218 0
+ 417 0135 0F 10       		ld	AL,#0x0018
+ 418 0136 42 00 40 14 		bsr	PioGet
+ 419 0138 00 00 00 00 		tst	@$XAP_AL
+ 419      00 9C 
+ 420 013b 00 00 00 25 		bne	.L21
+ 421                 		ld	AL,@decButtonState
+ 218:app_hw.c      ****         if ((PioGet(SW2_PIO) == FALSE) && (decButtonState == KEY_PRESSED))
+ 422                 	001
+ 423 013d 18 14       		bne	.L21
+ 424 013e 00 00 00 00 		.loc 1 220 0
+ 424      00 9C 
+ 425 0141 00 00 00 99 		ld	AL,@brightness_level
+ 426 0143 00 00 00 00 		cmp	AL,#0x0014
+ 426      00 F0 
+ 427 0146 00 00 00 15 		bcz	.L25
+ 428 0148 01 84       		.loc 1 222 0
+ 429 0149 00 00 00 00 		add	AL,#0xffec
+ 429      00 F0 
+ 220:app_hw.c      ****             if (brightness_level > (5*LEVEL_STEP_SIZE))
+ 430                 	4
+ 431 014c 00 00 00 15 	.L25:
+ 432 014e 14 84       		.loc 1 226 0
+ 433 014f 00 00 00 00 		ld	AL,#0x0000
+ 433      00 2C 
+ 222:app_hw.c      ****                 brightness_level -= (5*LEVEL_STEP_SIZE);
+ 434                 	:
+ 435 0152 EC 34       		st	AL,@brightness_level
+ 436 0153 00 00 00 00 		.loc 1 229 0
+ 436      00 E0 
+ 437                 		ld	AL,@brightness_level
+ 226:app_hw.c      ****                 brightness_level = MIN_LEVEL;
+ 438                 	AL,@(0x0006,Y)
+ 439 0156 00 14       		.loc 1 230 0
+ 440                 		ld	AL,@switch_cmd_tid
+ 441 0157 00 00 00 25 		st	AL,@(0x0007,Y)
+ 229:app_hw.c      ****             light_level.level = brightness_level;
+ 442                 		AL,#0x0001
+ 443 0159 00 00 00 15 		st	AL,@switch_cmd_tid
+ 444 015b 06 27       		.loc 1 231 0
+ 230:app_hw.c      ****             light_level.tid = switch_cmd_tid++;
+ 445                 		AL,@$XAP_UY
+ 446 015c 00 00 00 15 		add	AL,#0x0006
+ 447 015e 07 27       		ld	AH,#0x0000
+ 448 015f 01 34       		bsr	AppLightSetLevel
+ 449 0160 00 00 00 25 		.loc 1 233 0
+ 231:app_hw.c      ****             AppLightSetLevel(&light_level, FALSE);
+ 450                 	L,#0x0001
+ 451 0162 00 00 00 15 		st	AL,@(0,Y)
+ 452 0164 06 34       		ld	AL,#lwrd(handleButtonDebounce)
+ 453 0165 00 10       		st	AL,@(0x0002,Y)
+ 454 0166 00 00 00 00 		ld	AL,#hwrd(handleButtonDebounce)
+ 454      00 9C 
+ 233:app_hw.c      ****             oneSecTimerId = TimerCreate(BUTTON_ONE_SEC_PRESS_TIME, TRUE,
+ 455                 	L,@(0x0001,Y)
+ 456 0169 01 14       		ld	AH,#0x000f
+ 457 016a 00 27       		ld	AL,#0x4240
+ 458 016b 00 00 00 14 		bsr	TimerCreate
+ 459 016d 02 27       		st	AL,@oneSecTimerId
+ 460 016e 00 00 00 14 	.LVL18:
+ 461 0170 01 27       	.L21:
+ 462 0171 0F 10       		ld	AL,#0x0000
+ 463 0172 42 00 40 14 	.LVL19:
+ 464 0174 00 00 00 00 		st	AL,@(0x0008,Y)
+ 464      00 9C 
+ 465 0177 00 00 00 25 	.LVL20:
+ 466                 	.L20:
+ 467                 		.loc 1 239 0
+ 468 0179 00 14       		ld	AL,@switch_cmd_tid
+ 469                 		cmp	AL,#0x00ff
+ 470 017a 08 27       		bcz	.L27
+ 471                 		ld	AL,#0x0000
+ 472                 	.L27:
+ 239:app_hw.c      ****     switch_cmd_tid  = switch_cmd_tid > 255? 0: switch_cmd_tid;
+ 473                 	_tid
+ 474 017b 00 00 00 15 		.loc 1 242 0
+ 475 017d 01 00 FF 84 		tst	@(0x0008,Y)
+ 476 017f 00 00 00 00 		beq	.L29
+ 476      00 2C 
+ 477 0182 00 14       		.loc 1 244 0
+ 478                 		bsr	WriteSwitchDataOntoNVM
+ 479 0183 00 00 00 25 	.L29:
+ 242:app_hw.c      ****     if (update_nvm)
+ 480                 	 246 0
+ 481 0185 08 9B       		leavel	#0x000c
+ 482 0186 00 00 00 00 	.LFE2:
+ 482      00 F4 
+ 244:app_hw.c      ****         WriteSwitchDataOntoNVM();
+ 483                 	ize	handleButtonDebounce, .-handleButtonDebounce
+ 484 0189 00 00 00 00 		.equ	__size_of_handleButtonDebounce,. - handleButtonDebounce
+ 484      00 9C 
+ 485                 		.section	.text.SwitchHardwareInit,"ax",@progbits
+ 246:app_hw.c      **** }
+ 486                 	lobal	SwitchHardwareInit
+ 487 018c F4 0F       		.type	SwitchHardwareInit, @function
+ 488                 	SwitchHardwareInit:
+ 489                 	.LFB3:
+ 490                 		.loc 1 268 0
+ 491                 		enterl	#0x0002
+ 492                 	.LCFI4:
+ 493                 		.loc 1 269 0
+ 494                 		bsr	IOTSwitchInit
+ 495                 		.loc 1 272 0
+ 268:app_hw.c      **** {
+ 496                 	0016
+ 497 0000 FE 0B       		bsr	PioGet
+ 498                 		tst	@$XAP_AL
+ 269:app_hw.c      ****     IOTSwitchInit();
+ 499                 	e	.L38
+ 500 0001 00 00 00 00 		.loc 1 274 0
+ 500      00 9C 
+ 272:app_hw.c      ****     if(PioGet(SW4_PIO) == FALSE)
+ 501                 	d	AL,#0x0001
+ 502 0004 16 14       		st	AL,@onButtonState
+ 503 0005 00 00 00 00 	.L38:
+ 503      00 9C 
+ 504 0008 00 00 00 99 		.loc 1 276 0
+ 505 000a 00 00 00 00 		leavel	#0x0002
+ 505      00 F0 
+ 274:app_hw.c      ****         onButtonState = KEY_PRESSED;
+ 506                 	:
+ 507 000d 01 14       		.size	SwitchHardwareInit, .-SwitchHardwareInit
+ 508 000e 00 00 00 25 		.global	__size_of_SwitchHardwareInit
+ 509                 		.equ	__size_of_SwitchHardwareInit,. - SwitchHardwareInit
+ 276:app_hw.c      **** }
+ 510                 	ction	.bss.oneSecTimerId,"aw",@nobits
+ 511 0010 FE 0F       		.type	oneSecTimerId, @object
+ 512                 		.size	oneSecTimerId, 1
+ 513                 	oneSecTimerId:
+ 514                 		.space	1
+ 515                 		.section	.bss.incButtonState,"aw",@nobits
+ 516                 		.type	incButtonState, @object
+ 517                 		.size	incButtonState, 1
+ 518                 	incButtonState:
+ 519                 		.space	1
+ 520 0000 00 00       		.section	.bss.decButtonState,"aw",@nobits
+ 521                 		.type	decButtonState, @object
+ 522                 		.size	decButtonState, 1
+ 523                 	decButtonState:
+ 524                 		.space	1
+ 525 0000 00 00       		.section	.bss.onButtonState,"aw",@nobits
+ 526                 		.type	onButtonState, @object
+ 527                 		.size	onButtonState, 1
+ 528                 	onButtonState:
+ 529                 		.space	1
+ 530 0000 00 00       		.section	.data.switch_cmd_tid,"aw",@progbits
+ 531                 		.type	switch_cmd_tid, @object
+ 532                 		.size	switch_cmd_tid, 1
+ 533                 	switch_cmd_tid:
+ 534                 		.word	0x0001
+ 535 0000 00 00       		.section	.bss.brightness_level,"aw",@nobits
+ 536                 		.type	brightness_level, @object
+ 537                 		.size	brightness_level, 1
+ 538                 	brightness_level:
+ 539                 		.space	1
+ 540 0000 00 01       		.section	.bss.sw3_mask,"aw",@nobits
+ 541                 		.type	sw3_mask, @object
+ 542                 		.size	sw3_mask, 3
+ 543                 	sw3_mask:
+ 544                 		.space	3
+ 545 0000 00 00       		.section	.bss.sw2_mask,"aw",@nobits
+ 546                 		.type	sw2_mask, @object
+ 547                 		.size	sw2_mask, 3
+ 548                 	sw2_mask:
+ 549                 		.space	3
+ 550 0000 00 00 00 00 		.section	.bss.sw4_mask,"aw",@nobits
+ 550      00 00 
+ 551                 		.type	sw4_mask, @object
+ 552                 		.size	sw4_mask, 3
+ 553                 	sw4_mask:
+ 554                 		.space	3
+ 555 0000 00 00 00 00 		.comm g_app_nvm_offset, 1, 1
+ 555      00 00 
+ 556                 	
+ 557                 		.comm g_app_nvm_fresh, 1, 1
+ 558                 	
+ 559                 		.comm g_cskey_flags, 1, 1
+ 560 0000 00 00 00 00 	
+ 560      00 00 
+ 561                 		.comm switch_model_groups, 1, 1
+ 562                 	
+ 563                 		.comm wdog_model_groups, 1, 1
+ 564                 	
+ 565                 		.comm attention_model_groups, 1, 1
+ 566                 	
+ 567                 		.comm data_model_groups, 1, 1
+ 568                 	
+ 569                 		.comm lot_model_groups, 1, 1
+ 570                 	
+ 571                 		.comm debounce_tid, 1, 1
+ 572                 	
+ 573                 		.section	.debug_frame,"",@progbits
+ 574                 	.Lframe0:
+ 575                 		.4byte	.LECIE0-.LSCIE0
+ 576                 	.LSCIE0:
+ 577                 		.4byte	0xffffffff
+ 578                 		.1byte	0x1
+ 579                 		.ascii "\000"
+ 580                 		.1byte	0x1
+ 581 0000 00 00 00 00 		.1byte	0x7f
+ 582                 		.1byte	0x3
+ 583 0002 FF FF FF FF 		.1byte	0xc
+ 584 0004 01          		.1byte	0x5
+ 585 0004 00          		.1byte	0x0
+ 586 0005 01          		.p2align	2
+ 587 0005 7F          	.LECIE0:
+ 588 0006 03          	.LSFDE0:
+ 589 0006 0C          		.4byte	.LEFDE0-.LASFDE0
+ 590 0007 05          	.LASFDE0:
+ 591 0007 00          		.4byte	.Lframe0
+ 592                 		.4byte	.LFB6
+ 593                 		.4byte	.LFE6-.LFB6
+ 594                 		.1byte	0x4
+ 595 0008 00 00 00 00 		.4byte	.LCFI0-.LFB6
+ 596                 		.1byte	0xe
+ 597 000a 00 00 00 00 		.1byte	0x3
+ 598 000c 00 00 00 00 		.1byte	0x83
+ 599 000e 00 00 00 00 		.1byte	0x2
+ 600 0010 41          		.1byte	0x82
+ 601                 		.1byte	0x1
+ 602 0010 0E          		.p2align	2
+ 603 0011 03          	.LEFDE0:
+ 604 0011 83          	.LSFDE2:
+ 605 0012 02          		.4byte	.LEFDE2-.LASFDE2
+ 606 0012 82          	.LASFDE2:
+ 607 0013 01          		.4byte	.Lframe0
+ 608 0013 00          		.4byte	.LFB5
+ 609                 		.4byte	.LFE5-.LFB5
+ 610                 		.1byte	0x4
+ 611 0014 00 00 00 00 		.4byte	.LCFI1-.LFB5
+ 612                 		.1byte	0xe
+ 613 0016 00 00 00 00 		.1byte	0x3
+ 614 0018 00 00 00 00 		.1byte	0x83
+ 615 001a 00 00 00 00 		.1byte	0x2
+ 616 001c 41          		.1byte	0x82
+ 617                 		.1byte	0x1
+ 618 001c 0E          		.p2align	2
+ 619 001d 03          	.LEFDE2:
+ 620 001d 83          	.LSFDE4:
+ 621 001e 02          		.4byte	.LEFDE4-.LASFDE4
+ 622 001e 82          	.LASFDE4:
+ 623 001f 01          		.4byte	.Lframe0
+ 624 001f 00          		.4byte	.LFB4
+ 625                 		.4byte	.LFE4-.LFB4
+ 626                 		.1byte	0x4
+ 627 0020 00 00 00 00 		.4byte	.LCFI2-.LFB4
+ 628                 		.1byte	0xe
+ 629 0022 00 00 00 00 		.1byte	0xa
+ 630 0024 00 00 00 00 		.1byte	0x83
+ 631 0026 00 00 00 00 		.1byte	0x2
+ 632 0028 41          		.1byte	0x82
+ 633                 		.1byte	0x1
+ 634 0028 0E          		.p2align	2
+ 635 0029 0A          	.LEFDE4:
+ 636 0029 83          	.LSFDE6:
+ 637 002a 02          		.4byte	.LEFDE6-.LASFDE6
+ 638 002a 82          	.LASFDE6:
+ 639 002b 01          		.4byte	.Lframe0
+ 640 002b 00          		.4byte	.LFB2
+ 641                 		.4byte	.LFE2-.LFB2
+ 642                 		.1byte	0x4
+ 643 002c 00 00 00 00 		.4byte	.LCFI3-.LFB2
+ 644                 		.1byte	0xe
+ 645 002e 00 00 00 00 		.1byte	0xc
+ 646 0030 00 00 00 00 		.1byte	0x83
+ 647 0032 00 00 00 00 		.1byte	0x2
+ 648 0034 41          		.1byte	0x82
+ 649                 		.1byte	0x1
+ 650 0034 0E          		.p2align	2
+ 651 0035 0C          	.LEFDE6:
+ 652 0035 83          	.LSFDE8:
+ 653 0036 02          		.4byte	.LEFDE8-.LASFDE8
+ 654 0036 82          	.LASFDE8:
+ 655 0037 01          		.4byte	.Lframe0
+ 656 0037 00          		.4byte	.LFB3
+ 657                 		.4byte	.LFE3-.LFB3
+ 658                 		.1byte	0x4
+ 659 0038 00 00 00 00 		.4byte	.LCFI4-.LFB3
+ 660                 		.1byte	0xe
+ 661 003a 00 00 00 00 		.1byte	0x2
+ 662 003c 00 00 00 00 		.1byte	0x83
+ 663 003e 00 00 00 00 		.1byte	0x2
+ 664 0040 41          		.1byte	0x82
+ 665                 		.1byte	0x1
+ 666 0040 0E          		.p2align	2
+ 667 0041 02          	.LEFDE8:
+ 668 0041 83          		.text
+ 669 0042 02          	.Letext0:
+ 670 0042 82          		.section	.debug_loc,"",@progbits
+ 671 0043 01          	.Ldebug_loc0:
+ 672 0043 00          	.LLST0:
+ 673                 		.4byte	.LFB6
+ 674                 		.4byte	.LCFI0
+ 675                 		.2byte	0x1
+ 676                 		.1byte	0x55
+ 677                 		.4byte	.LCFI0
+ 678                 		.4byte	.LFE6
+ 679 0000 00 00 00 00 		.2byte	0x2
+ 680 0002 00 00 00 00 		.1byte	0x75
+ 681 0004 00 01       		.1byte	0x3
+ 682 0005 55          		.4byte	0x0
+ 683 0005 00 00 00 00 		.4byte	0x0
+ 684 0007 00 00 00 00 	.LLST1:
+ 685 0009 00 02       		.4byte	.LFB5
+ 686 000a 75          		.4byte	.LCFI1
+ 687 000b 03          		.2byte	0x1
+ 688 000b 00 00 00 00 		.1byte	0x55
+ 689 000d 00 00 00 00 		.4byte	.LCFI1
+ 690                 		.4byte	.LFE5
+ 691 000f 00 00 00 00 		.2byte	0x2
+ 692 0011 00 00 00 00 		.1byte	0x75
+ 693 0013 00 01       		.1byte	0x3
+ 694 0014 55          		.4byte	0x0
+ 695 0015 00 00 00 00 		.4byte	0x0
+ 696 0017 00 00 00 00 	.LLST2:
+ 697 0019 00 02       		.4byte	.LFB4
+ 698 001a 75          		.4byte	.LCFI2
+ 699 001a 03          		.2byte	0x1
+ 700 001b 00 00 00 00 		.1byte	0x55
+ 701 001d 00 00 00 00 		.4byte	.LCFI2
+ 702                 		.4byte	.LFE4
+ 703 001f 00 00 00 00 		.2byte	0x2
+ 704 0021 00 00 00 00 		.1byte	0x75
+ 705 0023 00 01       		.1byte	0xa
+ 706 0024 55          		.4byte	0x0
+ 707 0024 00 00 00 00 		.4byte	0x0
+ 708 0026 00 00 00 00 	.LLST3:
+ 709 0028 00 02       		.4byte	.LVL0
+ 710 0029 75          		.4byte	.LVL1
+ 711 002a 0A          		.2byte	0x1
+ 712 002a 00 00 00 00 		.1byte	0x51
+ 713 002c 00 00 00 00 		.4byte	.LVL1
+ 714                 		.4byte	.LFE4
+ 715 002e 00 00 00 00 		.2byte	0x2
+ 716 0030 00 00 00 00 		.1byte	0x76
+ 717 0032 00 01       		.1byte	0x7
+ 718 0033 51          		.4byte	0x0
+ 719 0034 00 00 00 00 		.4byte	0x0
+ 720 0036 00 00 00 00 	.LLST4:
+ 721 0038 00 02       		.4byte	.LFB2
+ 722 0039 76          		.4byte	.LCFI3
+ 723 0039 07          		.2byte	0x1
+ 724 003a 00 00 00 00 		.1byte	0x55
+ 725 003c 00 00 00 00 		.4byte	.LCFI3
+ 726                 		.4byte	.LFE2
+ 727 003e 00 00 00 00 		.2byte	0x2
+ 728 0040 00 00 00 00 		.1byte	0x75
+ 729 0042 00 01       		.1byte	0xc
+ 730 0043 55          		.4byte	0x0
+ 731 0043 00 00 00 00 		.4byte	0x0
+ 732 0045 00 00 00 00 	.LLST5:
+ 733 0047 00 02       		.4byte	.LVL6
+ 734 0048 75          		.4byte	.LVL7
+ 735 0049 0C          		.2byte	0x1
+ 736 0049 00 00 00 00 		.1byte	0x51
+ 737 004b 00 00 00 00 		.4byte	.LVL16
+ 738                 		.4byte	.LVL17
+ 739 004d 00 00 00 00 		.2byte	0x1
+ 740 004f 00 00 00 00 		.1byte	0x51
+ 741 0051 00 01       		.4byte	.LVL18
+ 742 0052 51          		.4byte	.LVL19
+ 743 0053 00 00 00 00 		.2byte	0x1
+ 744 0055 00 00 00 00 		.1byte	0x51
+ 745 0057 00 01       		.4byte	0x0
+ 746 0058 51          		.4byte	0x0
+ 747 0058 00 00 00 00 	.LLST6:
+ 748 005a 00 00 00 00 		.4byte	.LVL8
+ 749 005c 00 01       		.4byte	.LVL9
+ 750 005d 51          		.2byte	0x2
+ 751 005e 00 00 00 00 		.1byte	0x76
+ 752 0060 00 00 00 00 		.1byte	0x9
+ 753                 		.4byte	.LVL10
+ 754 0062 00 00 00 00 		.4byte	.LVL11
+ 755 0064 00 00 00 00 		.2byte	0x2
+ 756 0066 00 02       		.1byte	0x76
+ 757 0067 76          		.1byte	0x9
+ 758 0067 09          		.4byte	.LVL12
+ 759 0068 00 00 00 00 		.4byte	.LVL16
+ 760 006a 00 00 00 00 		.2byte	0x2
+ 761 006c 00 02       		.1byte	0x76
+ 762 006d 76          		.1byte	0x9
+ 763 006d 09          		.4byte	.LVL20
+ 764 006e 00 00 00 00 		.4byte	.LFE2
+ 765 0070 00 00 00 00 		.2byte	0x2
+ 766 0072 00 02       		.1byte	0x76
+ 767 0073 76          		.1byte	0x9
+ 768 0073 09          		.4byte	0x0
+ 769 0074 00 00 00 00 		.4byte	0x0
+ 770 0076 00 00 00 00 	.LLST7:
+ 771 0078 00 02       		.4byte	.LVL13
+ 772 0079 76          		.4byte	.LVL16
+ 773 0079 09          		.2byte	0x2
+ 774 007a 00 00 00 00 		.1byte	0x76
+ 775 007c 00 00 00 00 		.1byte	0x8
+ 776                 		.4byte	.LVL20
+ 777 007e 00 00 00 00 		.4byte	.LFE2
+ 778 0080 00 00 00 00 		.2byte	0x2
+ 779 0082 00 02       		.1byte	0x76
+ 780 0083 76          		.1byte	0x8
+ 781 0083 08          		.4byte	0x0
+ 782 0084 00 00 00 00 		.4byte	0x0
+ 783 0086 00 00 00 00 	.LLST8:
+ 784 0088 00 02       		.4byte	.LFB3
+ 785 0089 76          		.4byte	.LCFI4
+ 786 0089 08          		.2byte	0x1
+ 787 008a 00 00 00 00 		.1byte	0x55
+ 788 008c 00 00 00 00 		.4byte	.LCFI4
+ 789                 		.4byte	.LFE3
+ 790 008e 00 00 00 00 		.2byte	0x2
+ 791 0090 00 00 00 00 		.1byte	0x75
+ 792 0092 00 01       		.1byte	0x2
+ 793 0093 55          		.4byte	0x0
+ 794 0093 00 00 00 00 		.4byte	0x0
+ 795 0095 00 00 00 00 		.file 2 "D:/CSR102x_SDK-3.1.1/tools/include/CSR102x_A05/uenergy_types.h"
+ 796 0097 00 02       		.file 3 "D:/CSR102x_SDK-3.1.1/tools/include/CSR102x_A05/types.h"
+ 797 0098 75          		.file 4 "D:/CSR102x_SDK-3.1.1/tools/include/CSR102x_A05/timer.h"
+ 798 0099 02          		.file 5 "../mesh_common/mesh/include/csr_types.h"
+ 799 0099 00 00 00 00 		.file 6 "D:/CSR102x_SDK-3.1.1/tools/include/CSR102x_A05/sys_events.h"
+ 800 009b 00 00 00 00 		.file 7 "D:/CSR102x_SDK-3.1.1/tools/include/CSR102x_A05/pio_common.h"
+ 801                 		.file 8 "../mesh_common/mesh/handlers/core_mesh/core_mesh_handler.h"
+ 802                 		.file 9 "../mesh_common/mesh/include/csr_mesh_model_common.h"
+ 803                 		.file 10 "../mesh_common/mesh/include/light_model.h"
+ 804                 		.file 11 "../mesh_common/mesh/include/power_model.h"
+ 805                 		.file 12 "main_app.h"
+ 806                 		.file 13 "app_mesh_handler.h"
+ 807                 		.section	.debug_info
+ 808                 		.4byte	0x443
+ 809                 		.2byte	0x2
+ 810                 		.4byte	.Ldebug_abbrev0
+ 811                 		.1byte	0x4
+ 812                 		.1byte	0x1
+ 813                 		.4byte	.LASF69
+ 814 0000 00 00 04 43 		.1byte	0x1
+ 815 0002 00 02       		.4byte	.LASF70
+ 816 0003 00 00 00 00 		.4byte	.LASF71
+ 817 0005 04          		.4byte	0x0
+ 818 0005 01          		.4byte	0x0
+ 819 0006 00 00 00 00 		.4byte	.Ldebug_ranges0+0x0
+ 820 0008 01          		.4byte	.Ldebug_line0
+ 821 0008 00 00 00 00 		.1byte	0x2
+ 822 000a 00 00 00 00 		.1byte	0x2
+ 823 000c 00 00 00 00 		.1byte	0x5
+ 824 000e 00 00 00 00 		.ascii "int\000"
+ 825 0010 00 00 00 00 		.1byte	0x3
+ 826 0012 00 00 00 00 		.1byte	0x2
+ 827 0014 02          		.1byte	0x7
+ 828 0015 02          		.4byte	.LASF0
+ 829 0015 05          		.1byte	0x3
+ 830 0016 69 6E 74 00 		.1byte	0x2
+ 831 0018 03          		.1byte	0x5
+ 832 0018 02          		.4byte	.LASF1
+ 833 0019 07          		.1byte	0x3
+ 834 0019 00 00 00 00 		.1byte	0x2
+ 835 001b 03          		.1byte	0x7
+ 836 001c 02          		.4byte	.LASF2
+ 837 001c 05          		.1byte	0x3
+ 838 001d 00 00 00 00 		.1byte	0x4
+ 839 001f 03          		.1byte	0x5
+ 840 001f 02          		.4byte	.LASF3
+ 841 0020 07          		.1byte	0x3
+ 842 0020 00 00 00 00 		.1byte	0x4
+ 843 0022 03          		.1byte	0x7
+ 844 0023 04          		.4byte	.LASF4
+ 845 0023 05          		.1byte	0x3
+ 846 0024 00 00 00 00 		.1byte	0x8
+ 847 0026 03          		.1byte	0x5
+ 848 0026 04          		.4byte	.LASF5
+ 849 0027 07          		.1byte	0x3
+ 850 0027 00 00 00 00 		.1byte	0x8
+ 851 0029 03          		.1byte	0x7
+ 852 002a 08          		.4byte	.LASF6
+ 853 002a 05          		.1byte	0x4
+ 854 002b 00 00 00 00 		.4byte	.LASF8
+ 855 002d 03          		.1byte	0x2
+ 856 002d 08          		.1byte	0x1e
+ 857 002e 07          		.4byte	0x6c
+ 858 002e 00 00 00 00 		.1byte	0x3
+ 859 0030 04          		.1byte	0x2
+ 860 0031 00 00 00 00 		.1byte	0x8
+ 861 0033 02          		.4byte	.LASF7
+ 862 0033 1E          		.1byte	0x4
+ 863 0034 00 00 00 6C 		.4byte	.LASF9
+ 864 0036 03          		.1byte	0x2
+ 865 0036 02          		.1byte	0x1f
+ 866 0037 08          		.4byte	0x3e
+ 867 0037 00 00 00 00 		.1byte	0x3
+ 868 0039 04          		.1byte	0x2
+ 869 003a 00 00 00 00 		.1byte	0x6
+ 870 003c 02          		.4byte	.LASF10
+ 871 003c 1F          		.1byte	0x4
+ 872 003d 00 00 00 3E 		.4byte	.LASF11
+ 873 003f 03          		.1byte	0x2
+ 874 003f 02          		.1byte	0x27
+ 875 0040 06          		.4byte	0x30
+ 876 0040 00 00 00 00 		.1byte	0x5
+ 877 0042 04          		.1byte	0x6
+ 878 0043 00 00 00 00 		.1byte	0x3
+ 879 0045 02          		.1byte	0x74
+ 880 0045 27          		.4byte	0xa7
+ 881 0046 00 00 00 30 		.1byte	0x6
+ 882 0048 05          		.4byte	.LASF23
+ 883 0048 06          		.1byte	0x3
+ 884 0049 03          		.1byte	0x75
+ 885 0049 74          		.4byte	0xa7
+ 886 004a 00 00 00 A7 		.1byte	0x2
+ 887 004c 06          		.1byte	0x23
+ 888 004c 00 00 00 00 		.1byte	0x0
+ 889 004e 03          		.1byte	0x0
+ 890 004f 75          		.1byte	0x7
+ 891 004f 00 00 00 A7 		.4byte	0x73
+ 892 0051 02          		.4byte	0xb7
+ 893 0052 23          		.1byte	0x8
+ 894 0052 00          		.4byte	0xb7
+ 895 0053 00          		.1byte	0x2
+ 896 0053 07          		.1byte	0x0
+ 897 0054 00 00 00 73 		.1byte	0x9
+ 898 0056 00 00 00 B7 		.1byte	0x2
+ 899 0058 08          		.1byte	0x7
+ 900 0058 00 00 00 B7 		.1byte	0x4
+ 901 005a 02          		.4byte	.LASF12
+ 902 005b 00          		.1byte	0x3
+ 903 005b 09          		.1byte	0x76
+ 904 005c 02          		.4byte	0x90
+ 905 005c 07          		.1byte	0xa
+ 906 005d 04          		.1byte	0x2
+ 907 005d 00 00 00 00 		.1byte	0x7
+ 908 005f 03          		.1byte	0x3e
+ 909 0060 76          		.4byte	0xf8
+ 910 0060 00 00 00 90 		.1byte	0xb
+ 911 0062 0A          		.4byte	.LASF13
+ 912 0063 02          		.1byte	0x0
+ 913 0063 07          		.1byte	0xb
+ 914 0064 3E          		.4byte	.LASF14
+ 915 0064 00 00 00 F8 		.1byte	0x1
+ 916 0066 0B          		.1byte	0xb
+ 917 0067 00 00 00 00 		.4byte	.LASF15
+ 918 0069 00          		.1byte	0x2
+ 919 0069 0B          		.1byte	0xb
+ 920 006a 00 00 00 00 		.4byte	.LASF16
+ 921 006c 01          		.1byte	0x3
+ 922 006c 0B          		.1byte	0xb
+ 923 006d 00 00 00 00 		.4byte	.LASF17
+ 924 006f 02          		.1byte	0x4
+ 925 006f 0B          		.1byte	0xb
+ 926 0070 00 00 00 00 		.4byte	.LASF18
+ 927 0072 03          		.1byte	0x8
+ 928 0072 0B          		.1byte	0xb
+ 929 0073 00 00 00 00 		.4byte	.LASF19
+ 930 0075 04          		.1byte	0xc
+ 931 0075 0B          		.1byte	0x0
+ 932 0076 00 00 00 00 		.1byte	0x4
+ 933 0078 08          		.4byte	.LASF20
+ 934 0078 0B          		.1byte	0x4
+ 935 0079 00 00 00 00 		.1byte	0x63
+ 936 007b 0C          		.4byte	0x73
+ 937 007b 00          		.1byte	0x4
+ 938 007c 04          		.4byte	.LASF21
+ 939 007c 00 00 00 00 		.1byte	0x5
+ 940 007e 04          		.1byte	0x57
+ 941 007f 63          		.4byte	0x61
+ 942 007f 00 00 00 73 		.1byte	0x3
+ 943 0081 04          		.1byte	0x2
+ 944 0082 00 00 00 00 		.1byte	0x8
+ 945 0084 05          		.4byte	.LASF22
+ 946 0084 57          		.1byte	0x5
+ 947 0085 00 00 00 61 		.1byte	0xc
+ 948 0087 03          		.1byte	0x6
+ 949 0087 02          		.1byte	0x6c
+ 950 0088 08          		.4byte	0x13a
+ 951 0088 00 00 00 00 		.1byte	0x6
+ 952 008a 05          		.4byte	.LASF24
+ 953 008b 0C          		.1byte	0x6
+ 954 008b 06          		.1byte	0x6e
+ 955 008c 6C          		.4byte	0xba
+ 956 008c 00 00 01 3A 		.1byte	0x2
+ 957 008e 06          		.1byte	0x23
+ 958 008f 00 00 00 00 		.1byte	0x0
+ 959 0091 06          		.1byte	0x6
+ 960 0091 6E          		.4byte	.LASF25
+ 961 0092 00 00 00 BA 		.1byte	0x6
+ 962 0094 02          		.1byte	0x74
+ 963 0094 23          		.4byte	0xba
+ 964 0095 00          		.1byte	0x2
+ 965 0095 06          		.1byte	0x23
+ 966 0096 00 00 00 00 		.1byte	0x3
+ 967 0098 06          		.1byte	0x0
+ 968 0098 74          		.1byte	0x4
+ 969 0099 00 00 00 BA 		.4byte	.LASF26
+ 970 009b 02          		.1byte	0x6
+ 971 009b 23          		.1byte	0x75
+ 972 009c 03          		.4byte	0x115
+ 973 009c 00          		.1byte	0xa
+ 974 009d 04          		.1byte	0x2
+ 975 009d 00 00 00 00 		.1byte	0x8
+ 976 009f 06          		.1byte	0x17
+ 977 00a0 75          		.4byte	0x160
+ 978 00a0 00 00 01 15 		.1byte	0xb
+ 979 00a2 0A          		.4byte	.LASF27
+ 980 00a3 02          		.1byte	0x0
+ 981 00a3 08          		.1byte	0xb
+ 982 00a4 17          		.4byte	.LASF28
+ 983 00a4 00 00 01 60 		.1byte	0x1
+ 984 00a6 0B          		.1byte	0xb
+ 985 00a7 00 00 00 00 		.4byte	.LASF29
+ 986 00a9 00          		.1byte	0x2
+ 987 00a9 0B          		.1byte	0x0
+ 988 00aa 00 00 00 00 		.1byte	0xa
+ 989 00ac 01          		.1byte	0x2
+ 990 00ac 0B          		.1byte	0x9
+ 991 00ad 00 00 00 00 		.1byte	0x4e
+ 992 00af 02          		.4byte	0x181
+ 993 00af 00          		.1byte	0xb
+ 994 00b0 0A          		.4byte	.LASF30
+ 995 00b0 02          		.1byte	0x0
+ 996 00b1 09          		.1byte	0xb
+ 997 00b1 4E          		.4byte	.LASF31
+ 998 00b2 00 00 01 81 		.1byte	0x1
+ 999 00b4 0B          		.1byte	0xb
+ 1000 00b4 00 00 00 00 		.4byte	.LASF32
+ 1001 00b6 00          		.1byte	0x2
+ 1002 00b7 0B          		.1byte	0xb
+ 1003 00b7 00 00 00 00 		.4byte	.LASF33
+ 1004 00b9 01          		.1byte	0x3
+ 1005 00ba 0B          		.1byte	0x0
+ 1006 00ba 00 00 00 00 		.1byte	0x5
+ 1007 00bc 02          		.1byte	0x4
+ 1008 00bd 0B          		.1byte	0xa
+ 1009 00bd 00 00 00 00 		.1byte	0x21
+ 1010 00bf 03          		.4byte	0x1a6
+ 1011 00c0 00          		.1byte	0x6
+ 1012 00c0 05          		.4byte	.LASF34
+ 1013 00c1 04          		.1byte	0xa
+ 1014 00c1 0A          		.1byte	0x22
+ 1015 00c2 21          		.4byte	0x103
+ 1016 00c2 00 00 01 A6 		.1byte	0x2
+ 1017 00c4 06          		.1byte	0x23
+ 1018 00c5 00 00 00 00 		.1byte	0x0
+ 1019 00c7 0A          		.1byte	0xc
+ 1020 00c7 22          		.ascii "tid\000"
+ 1021 00c8 00 00 01 03 		.1byte	0xa
+ 1022 00ca 02          		.1byte	0x23
+ 1023 00ca 23          		.4byte	0x103
+ 1024 00cb 00          		.1byte	0x2
+ 1025 00cb 0C          		.1byte	0x23
+ 1026 00cc 74 69 64 00 		.1byte	0x1
+ 1027 00ce 0A          		.1byte	0x0
+ 1028 00ce 23          		.1byte	0x4
+ 1029 00cf 00 00 01 03 		.4byte	.LASF35
+ 1030 00d1 02          		.1byte	0xa
+ 1031 00d1 23          		.1byte	0x24
+ 1032 00d2 01          		.4byte	0x181
+ 1033 00d2 00          		.1byte	0x5
+ 1034 00d3 04          		.1byte	0x4
+ 1035 00d3 00 00 00 00 		.1byte	0xb
+ 1036 00d5 0A          		.1byte	0x21
+ 1037 00d6 24          		.4byte	0x1d6
+ 1038 00d6 00 00 01 81 		.1byte	0x6
+ 1039 00d8 05          		.4byte	.LASF36
+ 1040 00d9 04          		.1byte	0xb
+ 1041 00d9 0B          		.1byte	0x22
+ 1042 00da 21          		.4byte	0x103
+ 1043 00da 00 00 01 D6 		.1byte	0x2
+ 1044 00dc 06          		.1byte	0x23
+ 1045 00dd 00 00 00 00 		.1byte	0x0
+ 1046 00df 0B          		.1byte	0xc
+ 1047 00df 22          		.ascii "tid\000"
+ 1048 00e0 00 00 01 03 		.1byte	0xb
+ 1049 00e2 02          		.1byte	0x23
+ 1050 00e2 23          		.4byte	0x103
+ 1051 00e3 00          		.1byte	0x2
+ 1052 00e3 0C          		.1byte	0x23
+ 1053 00e4 74 69 64 00 		.1byte	0x1
+ 1054 00e6 0B          		.1byte	0x0
+ 1055 00e6 23          		.1byte	0x4
+ 1056 00e7 00 00 01 03 		.4byte	.LASF37
+ 1057 00e9 02          		.1byte	0xb
+ 1058 00e9 23          		.1byte	0x24
+ 1059 00ea 01          		.4byte	0x1b1
+ 1060 00ea 00          		.1byte	0xd
+ 1061 00eb 04          		.1byte	0x1
+ 1062 00eb 00 00 00 00 		.4byte	.LASF38
+ 1063 00ed 0B          		.1byte	0x1
+ 1064 00ee 24          		.2byte	0x1ae
+ 1065 00ee 00 00 01 B1 		.1byte	0x1
+ 1066 00f0 0D          		.4byte	.LFB6
+ 1067 00f1 01          		.4byte	.LFE6
+ 1068 00f1 00 00 00 00 		.4byte	.LLST0
+ 1069 00f3 01          		.1byte	0xd
+ 1070 00f4 01 AE       		.1byte	0x1
+ 1071 00f5 01          		.4byte	.LASF39
+ 1072 00f5 00 00 00 00 		.1byte	0x1
+ 1073 00f7 00 00 00 00 		.2byte	0x19c
+ 1074 00f9 00 00 00 00 		.1byte	0x1
+ 1075 00fb 0D          		.4byte	.LFB5
+ 1076 00fc 01          		.4byte	.LFE5
+ 1077 00fc 00 00 00 00 		.4byte	.LLST1
+ 1078 00fe 01          		.1byte	0xe
+ 1079 00ff 01 9C       		.1byte	0x1
+ 1080 0100 01          		.4byte	.LASF72
+ 1081 0100 00 00 00 00 		.1byte	0x1
+ 1082 0102 00 00 00 00 		.2byte	0x160
+ 1083 0104 00 00 00 00 		.1byte	0x1
+ 1084 0106 0E          		.4byte	.LFB4
+ 1085 0107 01          		.4byte	.LFE4
+ 1086 0107 00 00 00 00 		.4byte	.LLST2
+ 1087 0109 01          		.4byte	0x27d
+ 1088 010a 01 60       		.1byte	0xf
+ 1089 010b 01          		.4byte	.LASF45
+ 1090 010b 00 00 00 00 		.1byte	0x1
+ 1091 010d 00 00 00 00 		.2byte	0x15f
+ 1092 010f 00 00 00 00 		.4byte	0x27d
+ 1093 0111 00 00 02 7D 		.4byte	.LLST3
+ 1094 0113 0F          		.1byte	0x10
+ 1095 0114 00 00 00 00 		.4byte	.LASF40
+ 1096 0116 01          		.1byte	0x1
+ 1097 0116 01 5F       		.2byte	0x161
+ 1098 0117 00 00 02 7D 		.4byte	0x85
+ 1099 0119 00 00 00 00 		.1byte	0x10
+ 1100 011b 10          		.4byte	.LASF41
+ 1101 011c 00 00 00 00 		.1byte	0x1
+ 1102 011e 01          		.2byte	0x162
+ 1103 011e 01 61       		.4byte	0x27d
+ 1104 011f 00 00 00 85 		.1byte	0x11
+ 1105 0121 10          		.4byte	.LASF42
+ 1106 0122 00 00 00 00 		.1byte	0x1
+ 1107 0124 01          		.2byte	0x163
+ 1108 0124 01 62       		.4byte	0x73
+ 1109 0125 00 00 02 7D 		.1byte	0x2
+ 1110 0127 11          		.1byte	0x76
+ 1111 0128 00 00 00 00 		.1byte	0x4
+ 1112 012a 01          		.1byte	0x11
+ 1113 012a 01 63       		.4byte	.LASF43
+ 1114 012b 00 00 00 73 		.1byte	0x1
+ 1115 012d 02          		.2byte	0x163
+ 1116 012e 76          		.4byte	0x73
+ 1117 012e 04          		.1byte	0x2
+ 1118 012f 11          		.1byte	0x76
+ 1119 012f 00 00 00 00 		.1byte	0x5
+ 1120 0131 01          		.1byte	0x11
+ 1121 0132 01 63       		.4byte	.LASF44
+ 1122 0133 00 00 00 73 		.1byte	0x1
+ 1123 0135 02          		.2byte	0x163
+ 1124 0135 76          		.4byte	0x73
+ 1125 0136 05          		.1byte	0x2
+ 1126 0136 11          		.1byte	0x76
+ 1127 0137 00 00 00 00 		.1byte	0x6
+ 1128 0139 01          		.1byte	0x0
+ 1129 0139 01 63       		.1byte	0x12
+ 1130 013a 00 00 00 73 		.1byte	0x2
+ 1131 013c 02          		.4byte	0x13a
+ 1132 013d 76          		.1byte	0x13
+ 1133 013d 06          		.4byte	.LASF73
+ 1134 013e 00          		.1byte	0x1
+ 1135 013e 12          		.1byte	0x5d
+ 1136 013f 02          		.1byte	0x1
+ 1137 013f 00 00 01 3A 		.4byte	.LFB2
+ 1138 0141 13          		.4byte	.LFE2
+ 1139 0142 00 00 00 00 		.4byte	.LLST4
+ 1140 0144 01          		.4byte	0x2e5
+ 1141 0144 5D          		.1byte	0x14
+ 1142 0145 01          		.ascii "tid\000"
+ 1143 0145 00 00 00 00 		.1byte	0x1
+ 1144 0147 00 00 00 00 		.1byte	0x5c
+ 1145 0149 00 00 00 00 		.4byte	0xf8
+ 1146 014b 00 00 02 E5 		.4byte	.LLST5
+ 1147 014d 14          		.1byte	0x15
+ 1148 014e 74 69 64 00 		.4byte	.LASF46
+ 1149 0150 01          		.1byte	0x1
+ 1150 0150 5C          		.1byte	0x5e
+ 1151 0151 00 00 00 F8 		.4byte	0x85
+ 1152 0153 00 00 00 00 		.4byte	.LLST6
+ 1153 0155 15          		.1byte	0x15
+ 1154 0155 00 00 00 00 		.4byte	.LASF47
+ 1155 0157 01          		.1byte	0x1
+ 1156 0158 5E          		.1byte	0x5f
+ 1157 0158 00 00 00 85 		.4byte	0x85
+ 1158 015a 00 00 00 00 		.4byte	.LLST7
+ 1159 015c 15          		.1byte	0x16
+ 1160 015d 00 00 00 00 		.4byte	.LASF48
+ 1161 015f 01          		.1byte	0x1
+ 1162 015f 5F          		.1byte	0x60
+ 1163 0160 00 00 00 85 		.4byte	0x1d6
+ 1164 0162 00 00 00 00 		.1byte	0x2
+ 1165 0164 16          		.1byte	0x76
+ 1166 0164 00 00 00 00 		.1byte	0x4
+ 1167 0166 01          		.1byte	0x16
+ 1168 0167 60          		.4byte	.LASF49
+ 1169 0167 00 00 01 D6 		.1byte	0x1
+ 1170 0169 02          		.1byte	0x61
+ 1171 016a 76          		.4byte	0x1a6
+ 1172 016a 04          		.1byte	0x2
+ 1173 016b 16          		.1byte	0x76
+ 1174 016b 00 00 00 00 		.1byte	0x6
+ 1175 016d 01          		.1byte	0x0
+ 1176 016e 61          		.1byte	0xd
+ 1177 016e 00 00 01 A6 		.1byte	0x1
+ 1178 0170 02          		.4byte	.LASF50
+ 1179 0171 76          		.1byte	0x1
+ 1180 0171 06          		.2byte	0x10c
+ 1181 0172 00          		.1byte	0x1
+ 1182 0172 0D          		.4byte	.LFB3
+ 1183 0173 01          		.4byte	.LFE3
+ 1184 0173 00 00 00 00 		.4byte	.LLST8
+ 1185 0175 01          		.1byte	0x16
+ 1186 0176 01 0C       		.4byte	.LASF51
+ 1187 0177 01          		.1byte	0x1
+ 1188 0177 00 00 00 00 		.1byte	0x3e
+ 1189 0179 00 00 00 00 		.4byte	0x85
+ 1190 017b 00 00 00 00 		.1byte	0x5
+ 1191 017d 16          		.1byte	0x3
+ 1192 017e 00 00 00 00 		.4byte	onButtonState
+ 1193 0180 01          		.1byte	0x16
+ 1194 0180 3E          		.4byte	.LASF52
+ 1195 0181 00 00 00 85 		.1byte	0x1
+ 1196 0183 05          		.1byte	0x3f
+ 1197 0183 03          		.4byte	0x85
+ 1198 0184 00 00 00 00 		.1byte	0x5
+ 1199 0186 16          		.1byte	0x3
+ 1200 0186 00 00 00 00 		.4byte	incButtonState
+ 1201 0188 01          		.1byte	0x16
+ 1202 0189 3F          		.4byte	.LASF53
+ 1203 0189 00 00 00 85 		.1byte	0x1
+ 1204 018b 05          		.1byte	0x40
+ 1205 018c 03          		.4byte	0x85
+ 1206 018c 00 00 00 00 		.1byte	0x5
+ 1207 018e 16          		.1byte	0x3
+ 1208 018f 00 00 00 00 		.4byte	decButtonState
+ 1209 0191 01          		.1byte	0x16
+ 1210 0191 40          		.4byte	.LASF54
+ 1211 0192 00 00 00 85 		.1byte	0x1
+ 1212 0194 05          		.1byte	0x41
+ 1213 0194 03          		.4byte	0xf8
+ 1214 0195 00 00 00 00 		.1byte	0x5
+ 1215 0197 16          		.1byte	0x3
+ 1216 0197 00 00 00 00 		.4byte	oneSecTimerId
+ 1217 0199 01          		.1byte	0x16
+ 1218 019a 41          		.4byte	.LASF55
+ 1219 019a 00 00 00 F8 		.1byte	0x1
+ 1220 019c 05          		.1byte	0x43
+ 1221 019d 03          		.4byte	0x61
+ 1222 019d 00 00 00 00 		.1byte	0x5
+ 1223 019f 16          		.1byte	0x3
+ 1224 01a0 00 00 00 00 		.4byte	switch_cmd_tid
+ 1225 01a2 01          		.1byte	0x16
+ 1226 01a2 43          		.4byte	.LASF56
+ 1227 01a3 00 00 00 61 		.1byte	0x1
+ 1228 01a5 05          		.1byte	0x48
+ 1229 01a5 03          		.4byte	0x61
+ 1230 01a6 00 00 00 00 		.1byte	0x5
+ 1231 01a8 16          		.1byte	0x3
+ 1232 01a8 00 00 00 00 		.4byte	brightness_level
+ 1233 01aa 01          		.1byte	0x16
+ 1234 01ab 48          		.4byte	.LASF57
+ 1235 01ab 00 00 00 61 		.1byte	0x1
+ 1236 01ad 05          		.1byte	0x4b
+ 1237 01ae 03          		.4byte	0xba
+ 1238 01ae 00 00 00 00 		.1byte	0x5
+ 1239 01b0 16          		.1byte	0x3
+ 1240 01b1 00 00 00 00 		.4byte	sw3_mask
+ 1241 01b3 01          		.1byte	0x16
+ 1242 01b3 4B          		.4byte	.LASF58
+ 1243 01b4 00 00 00 BA 		.1byte	0x1
+ 1244 01b6 05          		.1byte	0x4b
+ 1245 01b6 03          		.4byte	0xba
+ 1246 01b7 00 00 00 00 		.1byte	0x5
+ 1247 01b9 16          		.1byte	0x3
+ 1248 01b9 00 00 00 00 		.4byte	sw2_mask
+ 1249 01bb 01          		.1byte	0x16
+ 1250 01bc 4B          		.4byte	.LASF59
+ 1251 01bc 00 00 00 BA 		.1byte	0x1
+ 1252 01be 05          		.1byte	0x4b
+ 1253 01bf 03          		.4byte	0xba
+ 1254 01bf 00 00 00 00 		.1byte	0x5
+ 1255 01c1 16          		.1byte	0x3
+ 1256 01c2 00 00 00 00 		.4byte	sw4_mask
+ 1257 01c4 01          		.1byte	0x17
+ 1258 01c4 4B          		.4byte	.LASF60
+ 1259 01c5 00 00 00 BA 		.1byte	0xc
+ 1260 01c7 05          		.1byte	0x99
+ 1261 01c7 03          		.4byte	0x73
+ 1262 01c8 00 00 00 00 		.1byte	0x1
+ 1263 01ca 17          		.1byte	0x5
+ 1264 01ca 00 00 00 00 		.1byte	0x3
+ 1265 01cc 0C          		.4byte	g_app_nvm_offset
+ 1266 01cd 99          		.1byte	0x17
+ 1267 01cd 00 00 00 73 		.4byte	.LASF61
+ 1268 01cf 01          		.1byte	0xc
+ 1269 01d0 05          		.1byte	0x9a
+ 1270 01d0 03          		.4byte	0x85
+ 1271 01d1 00 00 00 00 		.1byte	0x1
+ 1272 01d3 17          		.1byte	0x5
+ 1273 01d3 00 00 00 00 		.1byte	0x3
+ 1274 01d5 0C          		.4byte	g_app_nvm_fresh
+ 1275 01d6 9A          		.1byte	0x17
+ 1276 01d6 00 00 00 85 		.4byte	.LASF62
+ 1277 01d8 01          		.1byte	0xc
+ 1278 01d9 05          		.1byte	0x9b
+ 1279 01d9 03          		.4byte	0x73
+ 1280 01da 00 00 00 00 		.1byte	0x1
+ 1281 01dc 17          		.1byte	0x5
+ 1282 01dc 00 00 00 00 		.1byte	0x3
+ 1283 01de 0C          		.4byte	g_cskey_flags
+ 1284 01df 9B          		.1byte	0x7
+ 1285 01df 00 00 00 73 		.4byte	0x73
+ 1286 01e1 01          		.4byte	0x3da
+ 1287 01e2 05          		.1byte	0x8
+ 1288 01e2 03          		.4byte	0xb7
+ 1289 01e3 00 00 00 00 		.1byte	0x0
+ 1290 01e5 07          		.1byte	0x0
+ 1291 01e5 00 00 00 73 		.1byte	0x17
+ 1292 01e7 00 00 03 DA 		.4byte	.LASF63
+ 1293 01e9 08          		.1byte	0xd
+ 1294 01ea 00 00 00 B7 		.1byte	0x19
+ 1295 01ec 00          		.4byte	0x3ca
+ 1296 01ec 00          		.1byte	0x1
+ 1297 01ed 17          		.1byte	0x5
+ 1298 01ed 00 00 00 00 		.1byte	0x3
+ 1299 01ef 0D          		.4byte	switch_model_groups
+ 1300 01f0 19          		.1byte	0x17
+ 1301 01f0 00 00 03 CA 		.4byte	.LASF64
+ 1302 01f2 01          		.1byte	0xd
+ 1303 01f3 05          		.1byte	0x1a
+ 1304 01f3 03          		.4byte	0x3ca
+ 1305 01f4 00 00 00 00 		.1byte	0x1
+ 1306 01f6 17          		.1byte	0x5
+ 1307 01f6 00 00 00 00 		.1byte	0x3
+ 1308 01f8 0D          		.4byte	wdog_model_groups
+ 1309 01f9 1A          		.1byte	0x17
+ 1310 01f9 00 00 03 CA 		.4byte	.LASF65
+ 1311 01fb 01          		.1byte	0xd
+ 1312 01fc 05          		.1byte	0x1b
+ 1313 01fc 03          		.4byte	0x3ca
+ 1314 01fd 00 00 00 00 		.1byte	0x1
+ 1315 01ff 17          		.1byte	0x5
+ 1316 01ff 00 00 00 00 		.1byte	0x3
+ 1317 0201 0D          		.4byte	attention_model_groups
+ 1318 0202 1B          		.1byte	0x17
+ 1319 0202 00 00 03 CA 		.4byte	.LASF66
+ 1320 0204 01          		.1byte	0xd
+ 1321 0205 05          		.1byte	0x1c
+ 1322 0205 03          		.4byte	0x3ca
+ 1323 0206 00 00 00 00 		.1byte	0x1
+ 1324 0208 17          		.1byte	0x5
+ 1325 0208 00 00 00 00 		.1byte	0x3
+ 1326 020a 0D          		.4byte	data_model_groups
+ 1327 020b 1C          		.1byte	0x17
+ 1328 020b 00 00 03 CA 		.4byte	.LASF67
+ 1329 020d 01          		.1byte	0xd
+ 1330 020e 05          		.1byte	0x1d
+ 1331 020e 03          		.4byte	0x3ca
+ 1332 020f 00 00 00 00 		.1byte	0x1
+ 1333 0211 17          		.1byte	0x5
+ 1334 0211 00 00 00 00 		.1byte	0x3
+ 1335 0213 0D          		.4byte	lot_model_groups
+ 1336 0214 1D          		.1byte	0x17
+ 1337 0214 00 00 03 CA 		.4byte	.LASF68
+ 1338 0216 01          		.1byte	0x1
+ 1339 0217 05          		.1byte	0x46
+ 1340 0217 03          		.4byte	0xf8
+ 1341 0218 00 00 00 00 		.1byte	0x1
+ 1342 021a 17          		.1byte	0x5
+ 1343 021a 00 00 00 00 		.1byte	0x3
+ 1344 021c 01          		.4byte	debounce_tid
+ 1345 021d 46          		.1byte	0x0
+ 1346 021d 00 00 00 F8 		.section	.debug_abbrev
+ 1347 021f 01          		.1byte	0x1
+ 1348 0220 05          		.1byte	0x11
+ 1349 0220 03          		.1byte	0x1
+ 1350 0221 00 00 00 00 		.1byte	0x25
+ 1351 0223 00          		.1byte	0xe
+ 1352                 		.1byte	0x13
+ 1353 0000 01          		.1byte	0xb
+ 1354 0000 11          		.1byte	0x3
+ 1355 0001 01          		.1byte	0xe
+ 1356 0001 25          		.1byte	0x1b
+ 1357 0002 0E          		.1byte	0xe
+ 1358 0002 13          		.1byte	0x11
+ 1359 0003 0B          		.1byte	0x1
+ 1360 0003 03          		.1byte	0x52
+ 1361 0004 0E          		.1byte	0x1
+ 1362 0004 1B          		.1byte	0x55
+ 1363 0005 0E          		.1byte	0x6
+ 1364 0005 11          		.1byte	0x10
+ 1365 0006 01          		.1byte	0x6
+ 1366 0006 52          		.1byte	0x0
+ 1367 0007 01          		.1byte	0x0
+ 1368 0007 55          		.1byte	0x2
+ 1369 0008 06          		.1byte	0x24
+ 1370 0008 10          		.1byte	0x0
+ 1371 0009 06          		.1byte	0xb
+ 1372 0009 00          		.1byte	0xb
+ 1373 000a 00          		.1byte	0x3e
+ 1374 000a 02          		.1byte	0xb
+ 1375 000b 24          		.1byte	0x3
+ 1376 000b 00          		.1byte	0x8
+ 1377 000c 0B          		.1byte	0x0
+ 1378 000c 0B          		.1byte	0x0
+ 1379 000d 3E          		.1byte	0x3
+ 1380 000d 0B          		.1byte	0x24
+ 1381 000e 03          		.1byte	0x0
+ 1382 000e 08          		.1byte	0xb
+ 1383 000f 00          		.1byte	0xb
+ 1384 000f 00          		.1byte	0x3e
+ 1385 0010 03          		.1byte	0xb
+ 1386 0010 24          		.1byte	0x3
+ 1387 0011 00          		.1byte	0xe
+ 1388 0011 0B          		.1byte	0x0
+ 1389 0012 0B          		.1byte	0x0
+ 1390 0012 3E          		.1byte	0x4
+ 1391 0013 0B          		.1byte	0x16
+ 1392 0013 03          		.1byte	0x0
+ 1393 0014 0E          		.1byte	0x3
+ 1394 0014 00          		.1byte	0xe
+ 1395 0015 00          		.1byte	0x3a
+ 1396 0015 04          		.1byte	0xb
+ 1397 0016 16          		.1byte	0x3b
+ 1398 0016 00          		.1byte	0xb
+ 1399 0017 03          		.1byte	0x49
+ 1400 0017 0E          		.1byte	0x13
+ 1401 0018 3A          		.1byte	0x0
+ 1402 0018 0B          		.1byte	0x0
+ 1403 0019 3B          		.1byte	0x5
+ 1404 0019 0B          		.1byte	0x13
+ 1405 001a 49          		.1byte	0x1
+ 1406 001a 13          		.1byte	0xb
+ 1407 001b 00          		.1byte	0xb
+ 1408 001b 00          		.1byte	0x3a
+ 1409 001c 05          		.1byte	0xb
+ 1410 001c 13          		.1byte	0x3b
+ 1411 001d 01          		.1byte	0xb
+ 1412 001d 0B          		.1byte	0x1
+ 1413 001e 0B          		.1byte	0x13
+ 1414 001e 3A          		.1byte	0x0
+ 1415 001f 0B          		.1byte	0x0
+ 1416 001f 3B          		.1byte	0x6
+ 1417 0020 0B          		.1byte	0xd
+ 1418 0020 01          		.1byte	0x0
+ 1419 0021 13          		.1byte	0x3
+ 1420 0021 00          		.1byte	0xe
+ 1421 0022 00          		.1byte	0x3a
+ 1422 0022 06          		.1byte	0xb
+ 1423 0023 0D          		.1byte	0x3b
+ 1424 0023 00          		.1byte	0xb
+ 1425 0024 03          		.1byte	0x49
+ 1426 0024 0E          		.1byte	0x13
+ 1427 0025 3A          		.1byte	0x38
+ 1428 0025 0B          		.1byte	0xa
+ 1429 0026 3B          		.1byte	0x0
+ 1430 0026 0B          		.1byte	0x0
+ 1431 0027 49          		.1byte	0x7
+ 1432 0027 13          		.1byte	0x1
+ 1433 0028 38          		.1byte	0x1
+ 1434 0028 0A          		.1byte	0x49
+ 1435 0029 00          		.1byte	0x13
+ 1436 0029 00          		.1byte	0x1
+ 1437 002a 07          		.1byte	0x13
+ 1438 002a 01          		.1byte	0x0
+ 1439 002b 01          		.1byte	0x0
+ 1440 002b 49          		.1byte	0x8
+ 1441 002c 13          		.1byte	0x21
+ 1442 002c 01          		.1byte	0x0
+ 1443 002d 13          		.1byte	0x49
+ 1444 002d 00          		.1byte	0x13
+ 1445 002e 00          		.1byte	0x2f
+ 1446 002e 08          		.1byte	0xb
+ 1447 002f 21          		.1byte	0x0
+ 1448 002f 00          		.1byte	0x0
+ 1449 0030 49          		.1byte	0x9
+ 1450 0030 13          		.1byte	0x24
+ 1451 0031 2F          		.1byte	0x0
+ 1452 0031 0B          		.1byte	0xb
+ 1453 0032 00          		.1byte	0xb
+ 1454 0032 00          		.1byte	0x3e
+ 1455 0033 09          		.1byte	0xb
+ 1456 0033 24          		.1byte	0x0
+ 1457 0034 00          		.1byte	0x0
+ 1458 0034 0B          		.1byte	0xa
+ 1459 0035 0B          		.1byte	0x4
+ 1460 0035 3E          		.1byte	0x1
+ 1461 0036 0B          		.1byte	0xb
+ 1462 0036 00          		.1byte	0xb
+ 1463 0037 00          		.1byte	0x3a
+ 1464 0037 0A          		.1byte	0xb
+ 1465 0038 04          		.1byte	0x3b
+ 1466 0038 01          		.1byte	0xb
+ 1467 0039 0B          		.1byte	0x1
+ 1468 0039 0B          		.1byte	0x13
+ 1469 003a 3A          		.1byte	0x0
+ 1470 003a 0B          		.1byte	0x0
+ 1471 003b 3B          		.1byte	0xb
+ 1472 003b 0B          		.1byte	0x28
+ 1473 003c 01          		.1byte	0x0
+ 1474 003c 13          		.1byte	0x3
+ 1475 003d 00          		.1byte	0xe
+ 1476 003d 00          		.1byte	0x1c
+ 1477 003e 0B          		.1byte	0xd
+ 1478 003e 28          		.1byte	0x0
+ 1479 003f 00          		.1byte	0x0
+ 1480 003f 03          		.1byte	0xc
+ 1481 0040 0E          		.1byte	0xd
+ 1482 0040 1C          		.1byte	0x0
+ 1483 0041 0D          		.1byte	0x3
+ 1484 0041 00          		.1byte	0x8
+ 1485 0042 00          		.1byte	0x3a
+ 1486 0042 0C          		.1byte	0xb
+ 1487 0043 0D          		.1byte	0x3b
+ 1488 0043 00          		.1byte	0xb
+ 1489 0044 03          		.1byte	0x49
+ 1490 0044 08          		.1byte	0x13
+ 1491 0045 3A          		.1byte	0x38
+ 1492 0045 0B          		.1byte	0xa
+ 1493 0046 3B          		.1byte	0x0
+ 1494 0046 0B          		.1byte	0x0
+ 1495 0047 49          		.1byte	0xd
+ 1496 0047 13          		.1byte	0x2e
+ 1497 0048 38          		.1byte	0x0
+ 1498 0048 0A          		.1byte	0x3f
+ 1499 0049 00          		.1byte	0xc
+ 1500 0049 00          		.1byte	0x3
+ 1501 004a 0D          		.1byte	0xe
+ 1502 004a 2E          		.1byte	0x3a
+ 1503 004b 00          		.1byte	0xb
+ 1504 004b 3F          		.1byte	0x3b
+ 1505 004c 0C          		.1byte	0x5
+ 1506 004c 03          		.1byte	0x27
+ 1507 004d 0E          		.1byte	0xc
+ 1508 004d 3A          		.1byte	0x11
+ 1509 004e 0B          		.1byte	0x1
+ 1510 004e 3B          		.1byte	0x12
+ 1511 004f 05          		.1byte	0x1
+ 1512 004f 27          		.1byte	0x40
+ 1513 0050 0C          		.1byte	0x6
+ 1514 0050 11          		.1byte	0x0
+ 1515 0051 01          		.1byte	0x0
+ 1516 0051 12          		.1byte	0xe
+ 1517 0052 01          		.1byte	0x2e
+ 1518 0052 40          		.1byte	0x1
+ 1519 0053 06          		.1byte	0x3f
+ 1520 0053 00          		.1byte	0xc
+ 1521 0054 00          		.1byte	0x3
+ 1522 0054 0E          		.1byte	0xe
+ 1523 0055 2E          		.1byte	0x3a
+ 1524 0055 01          		.1byte	0xb
+ 1525 0056 3F          		.1byte	0x3b
+ 1526 0056 0C          		.1byte	0x5
+ 1527 0057 03          		.1byte	0x27
+ 1528 0057 0E          		.1byte	0xc
+ 1529 0058 3A          		.1byte	0x11
+ 1530 0058 0B          		.1byte	0x1
+ 1531 0059 3B          		.1byte	0x12
+ 1532 0059 05          		.1byte	0x1
+ 1533 005a 27          		.1byte	0x40
+ 1534 005a 0C          		.1byte	0x6
+ 1535 005b 11          		.1byte	0x1
+ 1536 005b 01          		.1byte	0x13
+ 1537 005c 12          		.1byte	0x0
+ 1538 005c 01          		.1byte	0x0
+ 1539 005d 40          		.1byte	0xf
+ 1540 005d 06          		.1byte	0x5
+ 1541 005e 01          		.1byte	0x0
+ 1542 005e 13          		.1byte	0x3
+ 1543 005f 00          		.1byte	0xe
+ 1544 005f 00          		.1byte	0x3a
+ 1545 0060 0F          		.1byte	0xb
+ 1546 0060 05          		.1byte	0x3b
+ 1547 0061 00          		.1byte	0x5
+ 1548 0061 03          		.1byte	0x49
+ 1549 0062 0E          		.1byte	0x13
+ 1550 0062 3A          		.1byte	0x2
+ 1551 0063 0B          		.1byte	0x6
+ 1552 0063 3B          		.1byte	0x0
+ 1553 0064 05          		.1byte	0x0
+ 1554 0064 49          		.1byte	0x10
+ 1555 0065 13          		.1byte	0x34
+ 1556 0065 02          		.1byte	0x0
+ 1557 0066 06          		.1byte	0x3
+ 1558 0066 00          		.1byte	0xe
+ 1559 0067 00          		.1byte	0x3a
+ 1560 0067 10          		.1byte	0xb
+ 1561 0068 34          		.1byte	0x3b
+ 1562 0068 00          		.1byte	0x5
+ 1563 0069 03          		.1byte	0x49
+ 1564 0069 0E          		.1byte	0x13
+ 1565 006a 3A          		.1byte	0x0
+ 1566 006a 0B          		.1byte	0x0
+ 1567 006b 3B          		.1byte	0x11
+ 1568 006b 05          		.1byte	0x34
+ 1569 006c 49          		.1byte	0x0
+ 1570 006c 13          		.1byte	0x3
+ 1571 006d 00          		.1byte	0xe
+ 1572 006d 00          		.1byte	0x3a
+ 1573 006e 11          		.1byte	0xb
+ 1574 006e 34          		.1byte	0x3b
+ 1575 006f 00          		.1byte	0x5
+ 1576 006f 03          		.1byte	0x49
+ 1577 0070 0E          		.1byte	0x13
+ 1578 0070 3A          		.1byte	0x2
+ 1579 0071 0B          		.1byte	0xa
+ 1580 0071 3B          		.1byte	0x0
+ 1581 0072 05          		.1byte	0x0
+ 1582 0072 49          		.1byte	0x12
+ 1583 0073 13          		.1byte	0xf
+ 1584 0073 02          		.1byte	0x0
+ 1585 0074 0A          		.1byte	0xb
+ 1586 0074 00          		.1byte	0xb
+ 1587 0075 00          		.1byte	0x49
+ 1588 0075 12          		.1byte	0x13
+ 1589 0076 0F          		.1byte	0x0
+ 1590 0076 00          		.1byte	0x0
+ 1591 0077 0B          		.1byte	0x13
+ 1592 0077 0B          		.1byte	0x2e
+ 1593 0078 49          		.1byte	0x1
+ 1594 0078 13          		.1byte	0x3
+ 1595 0079 00          		.1byte	0xe
+ 1596 0079 00          		.1byte	0x3a
+ 1597 007a 13          		.1byte	0xb
+ 1598 007a 2E          		.1byte	0x3b
+ 1599 007b 01          		.1byte	0xb
+ 1600 007b 03          		.1byte	0x27
+ 1601 007c 0E          		.1byte	0xc
+ 1602 007c 3A          		.1byte	0x11
+ 1603 007d 0B          		.1byte	0x1
+ 1604 007d 3B          		.1byte	0x12
+ 1605 007e 0B          		.1byte	0x1
+ 1606 007e 27          		.1byte	0x40
+ 1607 007f 0C          		.1byte	0x6
+ 1608 007f 11          		.1byte	0x1
+ 1609 0080 01          		.1byte	0x13
+ 1610 0080 12          		.1byte	0x0
+ 1611 0081 01          		.1byte	0x0
+ 1612 0081 40          		.1byte	0x14
+ 1613 0082 06          		.1byte	0x5
+ 1614 0082 01          		.1byte	0x0
+ 1615 0083 13          		.1byte	0x3
+ 1616 0083 00          		.1byte	0x8
+ 1617 0084 00          		.1byte	0x3a
+ 1618 0084 14          		.1byte	0xb
+ 1619 0085 05          		.1byte	0x3b
+ 1620 0085 00          		.1byte	0xb
+ 1621 0086 03          		.1byte	0x49
+ 1622 0086 08          		.1byte	0x13
+ 1623 0087 3A          		.1byte	0x2
+ 1624 0087 0B          		.1byte	0x6
+ 1625 0088 3B          		.1byte	0x0
+ 1626 0088 0B          		.1byte	0x0
+ 1627 0089 49          		.1byte	0x15
+ 1628 0089 13          		.1byte	0x34
+ 1629 008a 02          		.1byte	0x0
+ 1630 008a 06          		.1byte	0x3
+ 1631 008b 00          		.1byte	0xe
+ 1632 008b 00          		.1byte	0x3a
+ 1633 008c 15          		.1byte	0xb
+ 1634 008c 34          		.1byte	0x3b
+ 1635 008d 00          		.1byte	0xb
+ 1636 008d 03          		.1byte	0x49
+ 1637 008e 0E          		.1byte	0x13
+ 1638 008e 3A          		.1byte	0x2
+ 1639 008f 0B          		.1byte	0x6
+ 1640 008f 3B          		.1byte	0x0
+ 1641 0090 0B          		.1byte	0x0
+ 1642 0090 49          		.1byte	0x16
+ 1643 0091 13          		.1byte	0x34
+ 1644 0091 02          		.1byte	0x0
+ 1645 0092 06          		.1byte	0x3
+ 1646 0092 00          		.1byte	0xe
+ 1647 0093 00          		.1byte	0x3a
+ 1648 0093 16          		.1byte	0xb
+ 1649 0094 34          		.1byte	0x3b
+ 1650 0094 00          		.1byte	0xb
+ 1651 0095 03          		.1byte	0x49
+ 1652 0095 0E          		.1byte	0x13
+ 1653 0096 3A          		.1byte	0x2
+ 1654 0096 0B          		.1byte	0xa
+ 1655 0097 3B          		.1byte	0x0
+ 1656 0097 0B          		.1byte	0x0
+ 1657 0098 49          		.1byte	0x17
+ 1658 0098 13          		.1byte	0x34
+ 1659 0099 02          		.1byte	0x0
+ 1660 0099 0A          		.1byte	0x3
+ 1661 009a 00          		.1byte	0xe
+ 1662 009a 00          		.1byte	0x3a
+ 1663 009b 17          		.1byte	0xb
+ 1664 009b 34          		.1byte	0x3b
+ 1665 009c 00          		.1byte	0xb
+ 1666 009c 03          		.1byte	0x49
+ 1667 009d 0E          		.1byte	0x13
+ 1668 009d 3A          		.1byte	0x3f
+ 1669 009e 0B          		.1byte	0xc
+ 1670 009e 3B          		.1byte	0x2
+ 1671 009f 0B          		.1byte	0xa
+ 1672 009f 49          		.1byte	0x0
+ 1673 00a0 13          		.1byte	0x0
+ 1674 00a0 3F          		.1byte	0x0
+ 1675 00a1 0C          		.section	.debug_pubnames,"",@progbits
+ 1676 00a1 02          		.4byte	0x134
+ 1677 00a2 0A          		.2byte	0x2
+ 1678 00a2 00          		.4byte	.Ldebug_info0
+ 1679 00a3 00          		.4byte	0x447
+ 1680 00a3 00          		.4byte	0x1e1
+ 1681                 		.ascii "WriteSwitchDataOntoNVM\000"
+ 1682 0000 00 00 01 34 		.4byte	0x1f7
+ 1683 0002 00 02       		.ascii "ReadSwitchDataFromNVM\000"
+ 1684 0003 00 00 00 00 		.4byte	0x20d
+ 1685 0005 00 00 04 47 		.ascii "HandlePIOChangedEvent\000"
+ 1686 0007 00 00 01 E1 		.4byte	0x2e5
+ 1687 0009 57 72 69 74 		.ascii "SwitchHardwareInit\000"
+ 1687      65 53 77 69 
+ 1687      74 63 68 44 
+ 1687      61 74 61 4F 
+ 1687      6E 74 6F 4E 
+ 1688 0014 00 00 01 F7 		.4byte	0x394
+ 1689 0016 52 65 61 64 		.ascii "g_app_nvm_offset\000"
+ 1689      53 77 69 74 
+ 1689      63 68 44 61 
+ 1689      74 61 46 72 
+ 1689      6F 6D 4E 56 
+ 1690 0021 00 00 02 0D 		.4byte	0x3a6
+ 1691 0023 48 61 6E 64 		.ascii "g_app_nvm_fresh\000"
+ 1691      6C 65 50 49 
+ 1691      4F 43 68 61 
+ 1691      6E 67 65 64 
+ 1691      45 76 65 6E 
+ 1692 002e 00 00 02 E5 		.4byte	0x3b8
+ 1693 0030 53 77 69 74 		.ascii "g_cskey_flags\000"
+ 1693      63 68 48 61 
+ 1693      72 64 77 61 
+ 1693      72 65 49 6E 
+ 1693      69 74 00 
+ 1694 003a 00 00 03 94 		.4byte	0x3da
+ 1695 003c 67 5F 61 70 		.ascii "switch_model_groups\000"
+ 1695      70 5F 6E 76 
+ 1695      6D 5F 6F 66 
+ 1695      66 73 65 74 
+ 1695      00 
+ 1696 0044 00 00 03 A6 		.4byte	0x3ec
+ 1697 0046 67 5F 61 70 		.ascii "wdog_model_groups\000"
+ 1697      70 5F 6E 76 
+ 1697      6D 5F 66 72 
+ 1697      65 73 68 00 
+ 1698 004e 00 00 03 B8 		.4byte	0x3fe
+ 1699 0050 67 5F 63 73 		.ascii "attention_model_groups\000"
+ 1699      6B 65 79 5F 
+ 1699      66 6C 61 67 
+ 1699      73 00 
+ 1700 0057 00 00 03 DA 		.4byte	0x410
+ 1701 0059 73 77 69 74 		.ascii "data_model_groups\000"
+ 1701      63 68 5F 6D 
+ 1701      6F 64 65 6C 
+ 1701      5F 67 72 6F 
+ 1701      75 70 73 00 
+ 1702 0063 00 00 03 EC 		.4byte	0x422
+ 1703 0065 77 64 6F 67 		.ascii "lot_model_groups\000"
+ 1703      5F 6D 6F 64 
+ 1703      65 6C 5F 67 
+ 1703      72 6F 75 70 
+ 1703      73 00 
+ 1704 006e 00 00 03 FE 		.4byte	0x434
+ 1705 0070 61 74 74 65 		.ascii "debounce_tid\000"
+ 1705      6E 74 69 6F 
+ 1705      6E 5F 6D 6F 
+ 1705      64 65 6C 5F 
+ 1705      67 72 6F 75 
+ 1706 007c 00 00 04 10 		.4byte	0x0
+ 1707 007e 64 61 74 61 		.section	.debug_aranges,"",@progbits
+ 1707      5F 6D 6F 64 
+ 1707      65 6C 5F 67 
+ 1707      72 6F 75 70 
+ 1707      73 00 
+ 1708 0087 00 00 04 22 		.4byte	0x3c
+ 1709 0089 6C 6F 74 5F 		.2byte	0x2
+ 1709      6D 6F 64 65 
+ 1709      6C 5F 67 72 
+ 1709      6F 75 70 73 
+ 1709      00 
+ 1710 0091 00 00 04 34 		.4byte	.Ldebug_info0
+ 1711 0093 64 65 62 6F 		.1byte	0x4
+ 1711      75 6E 63 65 
+ 1711      5F 74 69 64 
+ 1711      00 
+ 1712 009a 00 00 00 00 		.1byte	0x0
+ 1713                 		.2byte	0x0
+ 1714 0000 00 00 00 3C 		.2byte	0x0
+ 1715 0002 00 02       		.4byte	.LFB6
+ 1716 0003 00 00 00 00 		.4byte	.LFE6-.LFB6
+ 1717 0005 04          		.4byte	.LFB5
+ 1718 0005 00          		.4byte	.LFE5-.LFB5
+ 1719 0006 00 00       		.4byte	.LFB4
+ 1720 0007 00 00       		.4byte	.LFE4-.LFB4
+ 1721 0008 00 00 00 00 		.4byte	.LFB2
+ 1722 000a 00 00 00 00 		.4byte	.LFE2-.LFB2
+ 1723 000c 00 00 00 00 		.4byte	.LFB3
+ 1724 000e 00 00 00 00 		.4byte	.LFE3-.LFB3
+ 1725 0010 00 00 00 00 		.4byte	0x0
+ 1726 0012 00 00 00 00 		.4byte	0x0
+ 1727 0014 00 00 00 00 		.section	.debug_ranges,"",@progbits
+ 1728 0016 00 00 00 00 	.Ldebug_ranges0:
+ 1729 0018 00 00 00 00 		.4byte	.Ltext0
+ 1730 001a 00 00 00 00 		.4byte	.Letext0
+ 1731 001c 00 00 00 00 		.4byte	.LFB6
+ 1732 001e 00 00 00 00 		.4byte	.LFE6
+ 1733                 		.4byte	.LFB5
+ 1734                 		.4byte	.LFE5
+ 1735 0000 00 00 00 00 		.4byte	.LFB4
+ 1736 0002 00 00 00 00 		.4byte	.LFE4
+ 1737 0004 00 00 00 00 		.4byte	.LFB2
+ 1738 0006 00 00 00 00 		.4byte	.LFE2
+ 1739 0008 00 00 00 00 		.4byte	.LFB3
+ 1740 000a 00 00 00 00 		.4byte	.LFE3
+ 1741 000c 00 00 00 00 		.4byte	0x0
+ 1742 000e 00 00 00 00 		.4byte	0x0
+ 1743 0010 00 00 00 00 		.section	.debug_str,"MS",@progbits,1
+ 1744 0012 00 00 00 00 	.LASF39:
+ 1745 0014 00 00 00 00 		.ascii "ReadSwitchDataFromNVM\000"
+ 1746 0016 00 00 00 00 	.LASF19:
+ 1747 0018 00 00 00 00 		.ascii "pio_event_mode_wake_both\000"
+ 1748 001a 00 00 00 00 	.LASF62:
+ 1749                 		.ascii "g_cskey_flags\000"
+ 1750                 	.LASF68:
+ 1751 0000 52 65 61 64 		.ascii "debounce_tid\000"
+ 1751      53 77 69 74 
+ 1751      63 68 44 61 
+ 1751      74 61 46 72 
+ 1751      6F 6D 4E 56 
+ 1752                 	.LASF46:
+ 1753 000b 70 69 6F 5F 		.ascii "startOneSecTimer\000"
+ 1753      65 76 65 6E 
+ 1753      74 5F 6D 6F 
+ 1753      64 65 5F 77 
+ 1753      61 6B 65 5F 
+ 1754                 	.LASF36:
+ 1755 0017 67 5F 63 73 		.ascii "state\000"
+ 1755      6B 65 79 5F 
+ 1755      66 6C 61 67 
+ 1755      73 00 
+ 1756                 	.LASF50:
+ 1757 001e 64 65 62 6F 		.ascii "SwitchHardwareInit\000"
+ 1757      75 6E 63 65 
+ 1757      5F 74 69 64 
+ 1757      00 
+ 1758                 	.LASF1:
+ 1759 0025 73 74 61 72 		.ascii "short int\000"
+ 1759      74 4F 6E 65 
+ 1759      53 65 63 54 
+ 1759      69 6D 65 72 
+ 1759      00 
+ 1760                 	.LASF48:
+ 1761 002d 73 74 61 74 		.ascii "power_state\000"
+ 1761      65 00 
+ 1762                 	.LASF69:
+ 1763 0030 53 77 69 74 		.ascii "GNU C 4.3.4 CSR version 31 for xap [2855778]\000"
+ 1763      63 68 48 61 
+ 1763      72 64 77 61 
+ 1763      72 65 49 6E 
+ 1763      69 74 00 
+ 1764                 	.LASF57:
+ 1765 003a 73 68 6F 72 		.ascii "sw3_mask\000"
+ 1765      74 20 69 6E 
+ 1765      74 00 
+ 1766                 	.LASF12:
+ 1767 003f 70 6F 77 65 		.ascii "pio_mask_t\000"
+ 1767      72 5F 73 74 
+ 1767      61 74 65 00 
+ 1768                 	.LASF54:
+ 1769 0045 47 4E 55 20 		.ascii "oneSecTimerId\000"
+ 1769      43 20 34 2E 
+ 1769      33 2E 34 20 
+ 1769      43 53 52 20 
+ 1769      76 65 72 73 
+ 1770                 	.LASF72:
+ 1771 005b 73 77 33 5F 		.ascii "HandlePIOChangedEvent\000"
+ 1771      6D 61 73 6B 
+ 1771      00 
+ 1772                 	.LASF8:
+ 1773 0060 70 69 6F 5F 		.ascii "uint8\000"
+ 1773      6D 61 73 6B 
+ 1773      5F 74 00 
+ 1774                 	.LASF63:
+ 1775 0065 6F 6E 65 53 		.ascii "switch_model_groups\000"
+ 1775      65 63 54 69 
+ 1775      6D 65 72 49 
+ 1775      64 00 
+ 1776                 	.LASF25:
+ 1777 006c 48 61 6E 64 		.ascii "pio_cause\000"
+ 1777      6C 65 50 49 
+ 1777      4F 43 68 61 
+ 1777      6E 67 65 64 
+ 1777      45 76 65 6E 
+ 1778                 	.LASF13:
+ 1779 0077 75 69 6E 74 		.ascii "pio_event_mode_disable\000"
+ 1779      38 00 
+ 1780                 	.LASF40:
+ 1781 007a 73 77 69 74 		.ascii "start_timer\000"
+ 1781      63 68 5F 6D 
+ 1781      6F 64 65 6C 
+ 1781      5F 67 72 6F 
+ 1781      75 70 73 00 
+ 1782                 	.LASF11:
+ 1783 0084 70 69 6F 5F 		.ascii "bool\000"
+ 1783      63 61 75 73 
+ 1783      65 00 
+ 1784                 	.LASF73:
+ 1785 0089 70 69 6F 5F 		.ascii "handleButtonDebounce\000"
+ 1785      65 76 65 6E 
+ 1785      74 5F 6D 6F 
+ 1785      64 65 5F 64 
+ 1785      69 73 61 62 
+ 1786                 	.LASF37:
+ 1787 0095 73 74 61 72 		.ascii "CSRMESH_POWER_SET_STATE_T\000"
+ 1787      74 5F 74 69 
+ 1787      6D 65 72 00 
+ 1788                 	.LASF43:
+ 1789 009b 62 6F 6F 6C 		.ascii "sw2_index\000"
+ 1789      00 
+ 1790                 	.LASF5:
+ 1791 009d 68 61 6E 64 		.ascii "long long int\000"
+ 1791      6C 65 42 75 
+ 1791      74 74 6F 6E 
+ 1791      44 65 62 6F 
+ 1791      75 6E 63 65 
+ 1792                 	.LASF14:
+ 1793 00a8 43 53 52 4D 		.ascii "pio_event_mode_rising\000"
+ 1793      45 53 48 5F 
+ 1793      50 4F 57 45 
+ 1793      52 5F 53 45 
+ 1793      54 5F 53 54 
+ 1794                 	.LASF64:
+ 1795 00b5 73 77 32 5F 		.ascii "wdog_model_groups\000"
+ 1795      69 6E 64 65 
+ 1795      78 00 
+ 1796                 	.LASF3:
+ 1797 00ba 6C 6F 6E 67 		.ascii "long int\000"
+ 1797      20 6C 6F 6E 
+ 1797      67 20 69 6E 
+ 1797      74 00 
+ 1798                 	.LASF66:
+ 1799 00c1 70 69 6F 5F 		.ascii "data_model_groups\000"
+ 1799      65 76 65 6E 
+ 1799      74 5F 6D 6F 
+ 1799      64 65 5F 72 
+ 1799      69 73 69 6E 
+ 1800                 	.LASF56:
+ 1801 00cc 77 64 6F 67 		.ascii "brightness_level\000"
+ 1801      5F 6D 6F 64 
+ 1801      65 6C 5F 67 
+ 1801      72 6F 75 70 
+ 1801      73 00 
+ 1802                 	.LASF67:
+ 1803 00d5 6C 6F 6E 67 		.ascii "lot_model_groups\000"
+ 1803      20 69 6E 74 
+ 1803      00 
+ 1804                 	.LASF44:
+ 1805 00d9 64 61 74 61 		.ascii "sw4_index\000"
+ 1805      5F 6D 6F 64 
+ 1805      65 6C 5F 67 
+ 1805      72 6F 75 70 
+ 1805      73 00 
+ 1806                 	.LASF7:
+ 1807 00e2 62 72 69 67 		.ascii "unsigned char\000"
+ 1807      68 74 6E 65 
+ 1807      73 73 5F 6C 
+ 1807      65 76 65 6C 
+ 1807      00 
+ 1808                 	.LASF31:
+ 1809 00eb 6C 6F 74 5F 		.ascii "csr_mesh_power_state_on\000"
+ 1809      6D 6F 64 65 
+ 1809      6C 5F 67 72 
+ 1809      6F 75 70 73 
+ 1809      00 
+ 1810                 	.LASF10:
+ 1811 00f3 73 77 34 5F 		.ascii "signed char\000"
+ 1811      69 6E 64 65 
+ 1811      78 00 
+ 1812                 	.LASF27:
+ 1813 00f8 75 6E 73 69 		.ascii "app_state_not_associated\000"
+ 1813      67 6E 65 64 
+ 1813      20 63 68 61 
+ 1813      72 00 
+ 1814                 	.LASF6:
+ 1815 00ff 63 73 72 5F 		.ascii "long long unsigned int\000"
+ 1815      6D 65 73 68 
+ 1815      5F 70 6F 77 
+ 1815      65 72 5F 73 
+ 1815      74 61 74 65 
+ 1816                 	.LASF17:
+ 1817 010b 73 69 67 6E 		.ascii "pio_event_mode_wake_rising\000"
+ 1817      65 64 20 63 
+ 1817      68 61 72 00 
+ 1818                 	.LASF29:
+ 1819 0111 61 70 70 5F 		.ascii "app_state_associated\000"
+ 1819      73 74 61 74 
+ 1819      65 5F 6E 6F 
+ 1819      74 5F 61 73 
+ 1819      73 6F 63 69 
+ 1820                 	.LASF35:
+ 1821 011e 6C 6F 6E 67 		.ascii "CSRMESH_LIGHT_SET_LEVEL_T\000"
+ 1821      20 6C 6F 6E 
+ 1821      67 20 75 6E 
+ 1821      73 69 67 6E 
+ 1821      65 64 20 69 
+ 1822                 	.LASF33:
+ 1823 0129 70 69 6F 5F 		.ascii "csr_mesh_power_state_onfromstandby\000"
+ 1823      65 76 65 6E 
+ 1823      74 5F 6D 6F 
+ 1823      64 65 5F 77 
+ 1823      61 6B 65 5F 
+ 1824                 	.LASF2:
+ 1825 0137 61 70 70 5F 		.ascii "short unsigned int\000"
+ 1825      73 74 61 74 
+ 1825      65 5F 61 73 
+ 1825      73 6F 63 69 
+ 1825      61 74 65 64 
+ 1826                 	.LASF53:
+ 1827 0141 43 53 52 4D 		.ascii "decButtonState\000"
+ 1827      45 53 48 5F 
+ 1827      4C 49 47 48 
+ 1827      54 5F 53 45 
+ 1827      54 5F 4C 45 
+ 1828                 	.LASF22:
+ 1829 014e 63 73 72 5F 		.ascii "char\000"
+ 1829      6D 65 73 68 
+ 1829      5F 70 6F 77 
+ 1829      65 72 5F 73 
+ 1829      74 61 74 65 
+ 1830                 	.LASF20:
+ 1831 0160 73 68 6F 72 		.ascii "timer_id\000"
+ 1831      74 20 75 6E 
+ 1831      73 69 67 6E 
+ 1831      65 64 20 69 
+ 1831      6E 74 00 
+ 1832                 	.LASF70:
+ 1833 0169 64 65 63 42 		.ascii "app_hw.c\000"
+ 1833      75 74 74 6F 
+ 1833      6E 53 74 61 
+ 1833      74 65 00 
+ 1834                 	.LASF47:
+ 1835 0171 63 68 61 72 		.ascii "update_nvm\000"
+ 1835      00 
+ 1836                 	.LASF45:
+ 1837 0173 74 69 6D 65 		.ascii "data\000"
+ 1837      72 5F 69 64 
+ 1837      00 
+ 1838                 	.LASF32:
+ 1839 0178 61 70 70 5F 		.ascii "csr_mesh_power_state_standby\000"
+ 1839      68 77 2E 63 
+ 1839      00 
+ 1840                 	.LASF9:
+ 1841 017c 75 70 64 61 		.ascii "uint16\000"
+ 1841      74 65 5F 6E 
+ 1841      76 6D 00 
+ 1842                 	.LASF4:
+ 1843 0182 64 61 74 61 		.ascii "long unsigned int\000"
+ 1843      00 
+ 1844                 	.LASF26:
+ 1845 0184 63 73 72 5F 		.ascii "pio_changed_data\000"
+ 1845      6D 65 73 68 
+ 1845      5F 70 6F 77 
+ 1845      65 72 5F 73 
+ 1845      74 61 74 65 
+ 1846                 	.LASF34:
+ 1847 0193 75 69 6E 74 		.ascii "level\000"
+ 1847      31 36 00 
+ 1848                 	.LASF21:
+ 1849 0196 6C 6F 6E 67 		.ascii "CsrUint8\000"
+ 1849      20 75 6E 73 
+ 1849      69 67 6E 65 
+ 1849      64 20 69 6E 
+ 1849      74 00 
+ 1850                 	.LASF55:
+ 1851 019f 70 69 6F 5F 		.ascii "switch_cmd_tid\000"
+ 1851      63 68 61 6E 
+ 1851      67 65 64 5F 
+ 1851      64 61 74 61 
+ 1851      00 
+ 1852                 	.LASF23:
+ 1853 01a8 6C 65 76 65 		.ascii "mask\000"
+ 1853      6C 00 
+ 1854                 	.LASF15:
+ 1855 01ab 43 73 72 55 		.ascii "pio_event_mode_falling\000"
+ 1855      69 6E 74 38 
+ 1855      00 
+ 1856                 	.LASF24:
+ 1857 01af 73 77 69 74 		.ascii "pio_state\000"
+ 1857      63 68 5F 63 
+ 1857      6D 64 5F 74 
+ 1857      69 64 00 
+ 1858                 	.LASF59:
+ 1859 01b7 6D 61 73 6B 		.ascii "sw4_mask\000"
+ 1859      00 
+ 1860                 	.LASF42:
+ 1861 01b9 70 69 6F 5F 		.ascii "sw3_index\000"
+ 1861      65 76 65 6E 
+ 1861      74 5F 6D 6F 
+ 1861      64 65 5F 66 
+ 1861      61 6C 6C 69 
+ 1862                 	.LASF58:
+ 1863 01c5 70 69 6F 5F 		.ascii "sw2_mask\000"
+ 1863      73 74 61 74 
+ 1863      65 00 
+ 1864                 	.LASF28:
+ 1865 01ca 73 77 34 5F 		.ascii "app_state_association_started\000"
+ 1865      6D 61 73 6B 
+ 1865      00 
+ 1866                 	.LASF49:
+ 1867 01ce 73 77 33 5F 		.ascii "light_level\000"
+ 1867      69 6E 64 65 
+ 1867      78 00 
+ 1868                 	.LASF18:
+ 1869 01d3 73 77 32 5F 		.ascii "pio_event_mode_wake_falling\000"
+ 1869      6D 61 73 6B 
+ 1869      00 
+ 1870                 	.LASF65:
+ 1871 01d8 61 70 70 5F 		.ascii "attention_model_groups\000"
+ 1871      73 74 61 74 
+ 1871      65 5F 61 73 
+ 1871      73 6F 63 69 
+ 1871      61 74 69 6F 
+ 1872                 	.LASF38:
+ 1873 01e7 6C 69 67 68 		.ascii "WriteSwitchDataOntoNVM\000"
+ 1873      74 5F 6C 65 
+ 1873      76 65 6C 00 
+ 1874                 	.LASF0:
+ 1875 01ed 70 69 6F 5F 		.ascii "unsigned int\000"
+ 1875      65 76 65 6E 
+ 1875      74 5F 6D 6F 
+ 1875      64 65 5F 77 
+ 1875      61 6B 65 5F 
+ 1876                 	.LASF51:
+ 1877 01fb 61 74 74 65 		.ascii "onButtonState\000"
+ 1877      6E 74 69 6F 
+ 1877      6E 5F 6D 6F 
+ 1877      64 65 6C 5F 
+ 1877      67 72 6F 75 
+ 1878                 	.LASF71:
+ 1879 0206 57 72 69 74 		.ascii "C:\\Users\\Administrator\\Desktop\\CSR\\csrmesh_2.1v_node_applications_A05\\CSRmesh_2_1_v_
+ 1879      65 53 77 69 
+ 1879      74 63 68 44 
+ 1879      61 74 61 4F 
+ 1879      6E 74 6F 4E 
+ 1880                 	.LASF52:
+ 1881 0212 75 6E 73 69 		.ascii "incButtonState\000"
+ 1881      67 6E 65 64 
+ 1881      20 69 6E 74 
+ 1881      00 
+ 1882                 	.LASF60:
+ 1883 0218 6F 6E 42 75 		.ascii "g_app_nvm_offset\000"
+ 1883      74 74 6F 6E 
+ 1883      53 74 61 74 
+ 1883      65 00 
+ 1884                 	.LASF16:
+ 1885 021f 43 3A 5C 55 		.ascii "pio_event_mode_both\000"
+ 1885      73 65 72 73 
+ 1885      5C 41 64 6D 
+ 1885      69 6E 69 73 
+ 1885      74 72 61 74 
+ 1886                 	.LASF61:
+ 1887 025a 69 6E 63 42 		.ascii "g_app_nvm_fresh\000"
+ 1887      75 74 74 6F 
+ 1887      6E 53 74 61 
+ 1887      74 65 00 
+ 1888                 	.LASF30:
+ 1889 0262 67 5F 61 70 		.ascii "csr_mesh_power_state_off\000"
+ 1889      70 5F 6E 76 
+ 1889      6D 5F 6F 66 
+ 1889      66 73 65 74 
+ 1889      00 
+ 1890                 	.LASF41:
+ 1891 026a 70 69 6F 5F 		.ascii "event_data\000"
+ 1891      65 76 65 6E 
+ 1891      74 5F 6D 6F 
+ 1891      64 65 5F 62 
+ 1891      6F 74 68 00 
+ 1892                 		.ident	"GCC: (GNU) 4.3.4 CSR version 31 for xap [2855778]"
+ 1893 0274 67 5F 61 70 	...
+ 1893      70 5F 6E 76 
+ 1893      6D 5F 66 72 
+ 1893      65 73 68 00 

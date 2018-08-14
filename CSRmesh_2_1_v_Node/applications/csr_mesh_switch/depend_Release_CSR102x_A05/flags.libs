@@ -1,0 +1,17 @@
+csrmesh
+light_client
+power_client
+switch_server
+extension_server
+extension_client
+time_client
+time_server
+action_server
+watchdog_server
+ping_server
+attention_server
+data_server
+data_client
+battery_server
+largeobjecttransfer_server
+gatt_lib_ram

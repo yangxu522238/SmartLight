@@ -1,0 +1,4 @@
+@000000 [0x00C000] depend_Release_CSR102x_A05\csr_mesh_switch_csr102x.app.1.ota
+@00C000 [0x00C000] depend_Release_CSR102x_A05\csr_mesh_switch_csr102x.app.2.ota
+@018000 [0x001000] depend_Release_CSR102x_A05\csr_mesh_switch_csr102x.conf.15.ota
+@019000 [0x000000] STORES_END
