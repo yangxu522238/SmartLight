@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <LinearLayout
+        android:id="@+id/light_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:layout_gravity="center"
+        android:background="@color/white">
+        <ImageButton
+            android:id="@+id/light_control_btn"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            android:background="@drawable/light_close"/>
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,57 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 27
+    defaultConfig {
+        applicationId "com.thundersoft.flagmingo.flagdemo"
+        minSdkVersion 19
+        targetSdkVersion 27
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    packagingOptions {
+        exclude 'META-INF/services/com.fasterxml.jackson.core.ObjectCodec'
+        exclude 'META-INF/services/com.fasterxml.jackson.core.JsonFactory'
+        exclude 'META-INF/maven/com.squareup.okhttp/okhttp/pom.properties'
+        exclude 'META-INF/maven/com.fasterxml.jackson.core/jackson-core/pom.xml'
+        exclude 'META-INF/maven/com.squareup.okio/okio/pom.properties'
+        exclude 'META-INF/maven/com.fasterxml.jackson.core/jackson-databind/pom.xml'
+        exclude 'META-INF/maven/com.fasterxml.jackson.core/jackson-databind/pom.properties'
+        exclude 'META-INF/maven/com.fasterxml.jackson.core/jackson-core/pom.properties'
+        exclude 'META-INF/maven/com.squareup.okio/okio/pom.xml'
+        exclude 'META-INF/maven/com.squareup.okhttp/okhttp/pom.xml'
+        exclude 'META-INF/maven/com.fasterxml.jackson.core/jackson-annotations/pom.properties'
+        exclude 'META-INF/maven/com.fasterxml.jackson.core/jackson-annotations/pom.xml'
+        exclude 'META-INF/maven/com.wilddog.client/wilddog-core-android/pom.xml'
+        exclude 'META-INF/maven/com.wilddog.client/wilddog-core-android/pom.properties'
+        exclude 'META-INF/maven/com.wilddog.client/wilddog-auth-android/pom.xml'
+        exclude 'META-INF/maven/com.wilddog.client/wilddog-auth-android/pom.properties'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/notice'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/license'
+        exclude 'META-INF/license.txt'
+    }
+
+
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    //noinspection GradleCompatible
+    implementation 'com.android.support:appcompat-v7:27.0.2'
+    implementation 'com.android.support.constraint:constraint-layout:1.1.0'
+    implementation 'com.ashokvarma.android:bottom-navigation-bar:1.4.1'
+    //noinspection GradleCompatible
+    implementation 'com.android.support:cardview-v7:22.2.1'
+    implementation 'com.wilddog.client:wilddog-sync-android:2.3.7'
+}

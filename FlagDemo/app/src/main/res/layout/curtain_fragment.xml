@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/control_curtain_tip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Drag the slider to control curtain"
+        android:layout_gravity="center_horizontal"/>
+
+    <SeekBar
+        android:id="@+id/control_curtain_slider"
+        style="@android:style/Widget.Material.SeekBar.Discrete"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:max="16"
+        android:progress="0"
+        tools:ignore="NewApi" />
+    <Button
+        android:id="@+id/add_mission_btn"
+        style="@android:style/Widget.Material.Button.Colored"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Add curtain Mission"
+        tools:ignore="NewApi" />
+
+    <LinearLayout
+        android:id="@+id/mission_plane"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/mission_date_tip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Click button to set mission date" />
+
+        <Button
+            android:id="@+id/mission_set_date_btn"
+            style="@android:style/Widget.Material.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SetDate" />
+
+        <TextView
+            android:id="@+id/mission_time_tip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Click button to set mission time" />
+
+        <Button
+            android:id="@+id/mission_set_time_btn"
+            style="@android:style/Widget.Material.Button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SetTime" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Drag the slider to set mission value" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <SeekBar
+                android:id="@+id/curtain_mission_slider"
+                style="@android:style/Widget.Material.SeekBar.Discrete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="3"
+                android:max="16"
+                android:progress="0"
+                tools:targetApi="n" />
+
+            <TextView
+                android:id="@+id/curtion_misson_slider_tip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="0" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <Button
+                android:id="@+id/mission_comfirm_btn"
+                style="@android:style/Widget.Material.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Comfirm" />
+
+            <Button
+                android:id="@+id/mission_cancel_btn"
+                style="@android:style/Widget.Material.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Cancel" />
+        </LinearLayout>
+
+    </LinearLayout>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Curtain mission list"
+        android:layout_gravity="center_horizontal"/>
+    <ListView
+        android:id="@+id/mission_list_view"
+        style="@android:style/Widget.Material.ListView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+    </ListView>
+
+</LinearLayout>
